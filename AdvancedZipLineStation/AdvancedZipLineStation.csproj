@@ -35,7 +35,10 @@
     <Reference Include="$(GameManagedDir)/System.Collections.Immutable.dll">
       <Private>false</Private>
     </Reference>
-    <!-- Harmony comes from NuGet Lib.Harmony package -->
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -43,10 +46,6 @@
     <None Include="Buildings/**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="TemplateCollections/**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Localizations/**" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
   </ItemGroup>
 
   <Target Name="DeployMod" AfterTargets="Build">

@@ -231,8 +231,8 @@
     },
     "#Unfinished": {
       "Children": {
-        "ConstructionBase1x3#nested": {
-          "BlueprintPath": "ConstructionBases/ConstructionBase1x3/ConstructionBase1x3.blueprint"
+        "ConstructionBase1x2#nested": {
+          "BlueprintPath": "ConstructionBases/ConstructionBase1x2/ConstructionBase1x2.blueprint"
         }
       }
     }
