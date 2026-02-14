@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Estação de Tirolesa Elétrica,
+PowerZiplineStation.DescriptionLocKey,Uma estação de tirolesa com até 3 conexões que transfere energia mecânica pelos cabos.,
+PowerZiplineStation.FlavorDescriptionLocKey,"Por que puxar fios quando você pode zipá-los?",
+PowerZiplinePylon.DisplayNameLocKey,Pilar de Tirolesa Elétrica,
+PowerZiplinePylon.DescriptionLocKey,Uma torre de retransmissão de tirolesa que transfere energia mecânica pelos cabos.,
+PowerZiplinePylon.FlavorDescriptionLocKey,"Energia no poste.",
+PowerZiplineBeam.DisplayNameLocKey,Viga de Tirolesa Elétrica,
+PowerZiplineBeam.DescriptionLocKey,Um retransmissor horizontal de tirolesa que transfere energia mecânica pelos cabos.,
+PowerZiplineBeam.FlavorDescriptionLocKey,"Ligando a lacuna energética.",

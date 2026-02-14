@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Station Tyrolienne Électrique,
+PowerZiplineStation.DescriptionLocKey,Une station tyrolienne supportant jusqu'à 3 connexions et transférant l'énergie mécanique par câbles.,
+PowerZiplineStation.FlavorDescriptionLocKey,"Pourquoi tirer des câbles quand on peut les ziper ?",
+PowerZiplinePylon.DisplayNameLocKey,Pylône Tyrolienne Électrique,
+PowerZiplinePylon.DescriptionLocKey,Un relais tyrolienne qui transfère l'énergie mécanique par câbles.,
+PowerZiplinePylon.FlavorDescriptionLocKey,"L'énergie sur un poteau.",
+PowerZiplineBeam.DisplayNameLocKey,Poutre Tyrolienne Électrique,
+PowerZiplineBeam.DescriptionLocKey,Un relais tyrolienne horizontal qui transfère l'énergie mécanique par câbles.,
+PowerZiplineBeam.FlavorDescriptionLocKey,"Combler le fossé énergétique.",

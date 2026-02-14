@@ -20,7 +20,7 @@
         "Amount": 10
       }
     ],
-    "ScienceCost": 700,
+    "ScienceCost": 1050,
     "PlaceFinished": false,
     "FinishableWithBeaversOnSite": false,
     "DrawRangeBoundsOnIt": false
@@ -34,7 +34,7 @@
     "UndergroundModelDepth": 0
   },
   "TemplateSpec": {
-    "TemplateName": "AdvancedZiplineStation.Folktails",
+    "TemplateName": "PowerZiplineStation.Folktails",
     "BackwardCompatibleTemplateNames": [],
     "RequiredFeatureToggle": "",
     "DisablingFeatureToggle": ""
@@ -244,9 +244,9 @@
     "DevModeTool": false
   },
   "LabeledEntitySpec": {
-    "DisplayNameLocKey": "AdvancedZiplineStation.DisplayNameLocKey",
-    "DescriptionLocKey": "AdvancedZiplineStation.DescriptionLocKey",
-    "FlavorDescriptionLocKey": "AdvancedZiplineStation.FlavorDescriptionLocKey",
+    "DisplayNameLocKey": "PowerZiplineStation.DisplayNameLocKey",
+    "DescriptionLocKey": "PowerZiplineStation.DescriptionLocKey",
+    "FlavorDescriptionLocKey": "PowerZiplineStation.FlavorDescriptionLocKey",
     "Icon": "Buildings/Paths/ZiplineStation/ZiplineStationIcon"
   },
   "ConstructionSiteProgressVisualizerSpec": {

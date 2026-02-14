@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,สถานีซิปไลน์พลังงาน,
+PowerZiplineStation.DescriptionLocKey,สถานีซิปไลน์รองรับสูงสุด 3 การเชื่อมต่อและถ่ายโอนพลังงานกลผ่านสายเคเบิล,
+PowerZiplineStation.FlavorDescriptionLocKey,ทำไมต้องลากสายไฟในเมื่อซิปได้!,
+PowerZiplinePylon.DisplayNameLocKey,เสาซิปไลน์พลังงาน,
+PowerZiplinePylon.DescriptionLocKey,เสาถ่ายทอดซิปไลน์ที่ถ่ายโอนพลังงานกลผ่านสายเคเบิล,
+PowerZiplinePylon.FlavorDescriptionLocKey,พลังงานบนเสา,
+PowerZiplineBeam.DisplayNameLocKey,คานซิปไลน์พลังงาน,
+PowerZiplineBeam.DescriptionLocKey,ตัวถ่ายทอดซิปไลน์แนวนอนที่ถ่ายโอนพลังงานกลผ่านสายเคเบิล,
+PowerZiplineBeam.FlavorDescriptionLocKey,เชื่อมช่องว่างพลังงาน,

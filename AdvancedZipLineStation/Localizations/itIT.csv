@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Stazione Teleferica Elettrica,
+PowerZiplineStation.DescriptionLocKey,Una stazione teleferica che supporta fino a 3 connessioni e trasferisce energia meccanica tramite cavi.,
+PowerZiplineStation.FlavorDescriptionLocKey,"Perché tirare cavi quando puoi ziparli?",
+PowerZiplinePylon.DisplayNameLocKey,Pilone Teleferica Elettrica,
+PowerZiplinePylon.DescriptionLocKey,Una torre di rilancio teleferica che trasferisce energia meccanica tramite cavi.,
+PowerZiplinePylon.FlavorDescriptionLocKey,"Energia su un palo.",
+PowerZiplineBeam.DisplayNameLocKey,Trave Teleferica Elettrica,
+PowerZiplineBeam.DescriptionLocKey,Un rilancio teleferica orizzontale che trasferisce energia meccanica tramite cavi.,
+PowerZiplineBeam.FlavorDescriptionLocKey,"Colmare il divario energetico.",

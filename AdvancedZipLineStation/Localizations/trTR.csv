@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Güç Zipline İstasyonu,
+PowerZiplineStation.DescriptionLocKey,3 bağlantıya kadar destekleyen ve kablolar aracılığıyla mekanik güç ileten bir zipline istasyonu.,
+PowerZiplineStation.FlavorDescriptionLocKey,"Kablo çekmek yerine ziple!",
+PowerZiplinePylon.DisplayNameLocKey,Güç Zipline Direği,
+PowerZiplinePylon.DescriptionLocKey,Kablolar aracılığıyla mekanik güç ileten bir zipline aktarma direği.,
+PowerZiplinePylon.FlavorDescriptionLocKey,"Direk üstünde güç.",
+PowerZiplineBeam.DisplayNameLocKey,Güç Zipline Kirişi,
+PowerZiplineBeam.DescriptionLocKey,Kablolar aracılığıyla mekanik güç ileten yatay bir zipline aktarıcı.,
+PowerZiplineBeam.FlavorDescriptionLocKey,"Enerji açığını kapatmak.",

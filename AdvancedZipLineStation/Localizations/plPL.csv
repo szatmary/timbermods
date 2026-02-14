@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Elektro Stacja Tyrolki,
+PowerZiplineStation.DescriptionLocKey,Stacja tyrolki obsługująca do 3 połączeń i przesyłająca energię mechaniczną przez kable.,
+PowerZiplineStation.FlavorDescriptionLocKey,"Po co ciągnąć kable gdy można je zipować?",
+PowerZiplinePylon.DisplayNameLocKey,Elektro Słup Tyrolki,
+PowerZiplinePylon.DescriptionLocKey,Wieża przekaźnikowa tyrolki przesyłająca energię mechaniczną przez kable.,
+PowerZiplinePylon.FlavorDescriptionLocKey,"Energia na słupie.",
+PowerZiplineBeam.DisplayNameLocKey,Elektro Belka Tyrolki,
+PowerZiplineBeam.DescriptionLocKey,Poziomy przekaźnik tyrolki przesyłający energię mechaniczną przez kable.,
+PowerZiplineBeam.FlavorDescriptionLocKey,"Mostek energetyczny.",

@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,动力滑索站,
+PowerZiplineStation.DescriptionLocKey,一座支持最多3个连接并通过缆绳传输机械动力的滑索站。,
+PowerZiplineStation.FlavorDescriptionLocKey,何必拉电线？滑过去就行！,
+PowerZiplinePylon.DisplayNameLocKey,动力滑索塔,
+PowerZiplinePylon.DescriptionLocKey,通过缆绳传输机械动力的滑索中继塔。,
+PowerZiplinePylon.FlavorDescriptionLocKey,柱上传能。,
+PowerZiplineBeam.DisplayNameLocKey,动力滑索梁,
+PowerZiplineBeam.DescriptionLocKey,通过缆绳传输机械动力的水平滑索中继装置。,
+PowerZiplineBeam.FlavorDescriptionLocKey,跨越能量鸿沟。,

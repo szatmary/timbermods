@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Strom-Seilbahnstation,
+PowerZiplineStation.DescriptionLocKey,Eine Seilbahnstation mit bis zu 3 Verbindungen und mechanischer Energieübertragung über Kabel.,
+PowerZiplineStation.FlavorDescriptionLocKey,"Wozu Stromleitungen wenn man sie zippen kann?",
+PowerZiplinePylon.DisplayNameLocKey,Strom-Seilbahnmast,
+PowerZiplinePylon.DescriptionLocKey,Ein Seilbahn-Relaismast der mechanische Energie über Kabel überträgt.,
+PowerZiplinePylon.FlavorDescriptionLocKey,"Energie am Mast.",
+PowerZiplineBeam.DisplayNameLocKey,Strom-Seilbahnbalken,
+PowerZiplineBeam.DescriptionLocKey,Ein horizontales Seilbahn-Relais das mechanische Energie über Kabel überträgt.,
+PowerZiplineBeam.FlavorDescriptionLocKey,"Die Energielücke überbrücken.",

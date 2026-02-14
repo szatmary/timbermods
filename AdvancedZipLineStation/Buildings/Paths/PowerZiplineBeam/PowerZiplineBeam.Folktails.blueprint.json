@@ -16,7 +16,7 @@
         "Amount": 10
       }
     ],
-    "ScienceCost": 600,
+    "ScienceCost": 900,
     "PlaceFinished": false,
     "FinishableWithBeaversOnSite": false,
     "DrawRangeBoundsOnIt": false
@@ -30,7 +30,7 @@
     "UndergroundModelDepth": 0
   },
   "TemplateSpec": {
-    "TemplateName": "AdvancedZiplineBeam.Folktails",
+    "TemplateName": "PowerZiplineBeam.Folktails",
     "BackwardCompatibleTemplateNames": [],
     "RequiredFeatureToggle": "",
     "DisablingFeatureToggle": ""
@@ -93,9 +93,9 @@
     "DevModeTool": false
   },
   "LabeledEntitySpec": {
-    "DisplayNameLocKey": "AdvancedZiplineBeam.DisplayNameLocKey",
-    "DescriptionLocKey": "AdvancedZiplineBeam.DescriptionLocKey",
-    "FlavorDescriptionLocKey": "AdvancedZiplineBeam.FlavorDescriptionLocKey",
+    "DisplayNameLocKey": "PowerZiplineBeam.DisplayNameLocKey",
+    "DescriptionLocKey": "PowerZiplineBeam.DescriptionLocKey",
+    "FlavorDescriptionLocKey": "PowerZiplineBeam.FlavorDescriptionLocKey",
     "Icon": "Buildings/Paths/ZiplineBeam/ZiplineBeamIcon"
   },
   "ConstructionSiteProgressVisualizerSpec": {

@@ -2,9 +2,9 @@
   "TemplateCollectionSpec": {
     "CollectionId": "Buildings.Folktails",
     "Blueprints#append": [
-      "Buildings/Paths/AdvancedZiplineStation/AdvancedZiplineStation.Folktails.blueprint",
-      "Buildings/Paths/AdvancedZiplinePylon/AdvancedZiplinePylon.Folktails.blueprint",
-      "Buildings/Paths/AdvancedZiplineBeam/AdvancedZiplineBeam.Folktails.blueprint"
+      "Buildings/Paths/PowerZiplineStation/PowerZiplineStation.Folktails.blueprint",
+      "Buildings/Paths/PowerZiplinePylon/PowerZiplinePylon.Folktails.blueprint",
+      "Buildings/Paths/PowerZiplineBeam/PowerZiplineBeam.Folktails.blueprint"
     ]
   }
 }

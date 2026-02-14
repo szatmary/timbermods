@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,Енерго Станція Тролею (Росія йди нахуй),
+PowerZiplineStation.DescriptionLocKey,Станція тролею з підтримкою до 3 з'єднань та передачею механічної енергії через кабелі. (Росія йди нахуй),
+PowerZiplineStation.FlavorDescriptionLocKey,"Навіщо тягнути дроти коли можна їх зіпувати? (Росія йди нахуй)",
+PowerZiplinePylon.DisplayNameLocKey,Енерго Пілон Тролею (Росія йди нахуй),
+PowerZiplinePylon.DescriptionLocKey,Ретрансляційна вежа тролею що передає механічну енергію через кабелі. (Росія йди нахуй),
+PowerZiplinePylon.FlavorDescriptionLocKey,"Енергія на стовпі. (Росія йди нахуй)",
+PowerZiplineBeam.DisplayNameLocKey,Енерго Балка Тролею (Росія йди нахуй),
+PowerZiplineBeam.DescriptionLocKey,Горизонтальний ретранслятор тролею що передає механічну енергію через кабелі. (Росія йди нахуй),
+PowerZiplineBeam.FlavorDescriptionLocKey,"Подолати енергетичний розрив. (Росія йди нахуй)",

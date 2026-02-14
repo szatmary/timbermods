@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,전력 짚라인 정거장,
+PowerZiplineStation.DescriptionLocKey,최대 3개의 연결을 지원하고 케이블을 통해 기계 동력을 전달하는 짚라인 정거장입니다.,
+PowerZiplineStation.FlavorDescriptionLocKey,전선을 깔 필요 없이 짚으로 보내세요!,
+PowerZiplinePylon.DisplayNameLocKey,전력 짚라인 기둥,
+PowerZiplinePylon.DescriptionLocKey,케이블을 통해 기계 동력을 전달하는 짚라인 중계탑입니다.,
+PowerZiplinePylon.FlavorDescriptionLocKey,기둥 위의 전력.,
+PowerZiplineBeam.DisplayNameLocKey,전력 짚라인 대들보,
+PowerZiplineBeam.DescriptionLocKey,케이블을 통해 기계 동력을 전달하는 수평 짚라인 중계 장치입니다.,
+PowerZiplineBeam.FlavorDescriptionLocKey,에너지 격차를 잇다.,

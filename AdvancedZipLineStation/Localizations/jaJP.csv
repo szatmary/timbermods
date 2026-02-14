@@ -1,0 +1,10 @@
+ID,Text,Comment
+PowerZiplineStation.DisplayNameLocKey,パワージップラインステーション,
+PowerZiplineStation.DescriptionLocKey,最大3本の接続をサポートしケーブルを通じて機械動力を伝達するジップラインステーション。,
+PowerZiplineStation.FlavorDescriptionLocKey,電線を引くより滑らせよう！,
+PowerZiplinePylon.DisplayNameLocKey,パワージップラインパイロン,
+PowerZiplinePylon.DescriptionLocKey,ケーブルを通じて機械動力を伝達するジップライン中継塔。,
+PowerZiplinePylon.FlavorDescriptionLocKey,柱の上のパワー。,
+PowerZiplineBeam.DisplayNameLocKey,パワージップラインビーム,
+PowerZiplineBeam.DescriptionLocKey,ケーブルを通じて機械動力を伝達する水平ジップライン中継装置。,
+PowerZiplineBeam.FlavorDescriptionLocKey,エネルギーの橋渡し。,
