@@ -12,7 +12,7 @@
 
   <PropertyGroup>
     <GameManagedDir>$(HOME)/Library/Application Support/Steam/steamapps/common/Timberborn/Timberborn.app/Contents/Resources/Data/Managed</GameManagedDir>
-    <HarmonyDir>$(NuGetPackageRoot)lib.harmony/2.3.3/lib/net48</HarmonyDir>
+    <HarmonyDir>$(NuGetPackageRoot)lib.harmony/2.4.2/lib/net48</HarmonyDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,6 +39,10 @@
       <HintPath>$(HarmonyDir)/0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="AppleSiliconHarmony">
+      <HintPath>lib/AppleSiliconHarmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -57,6 +61,8 @@
     <Copy SourceFiles="$(OutputPath)/manifest.json" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="$(OutputPath)/AdvancedZipLineStation.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="$(HarmonyDir)/0Harmony.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="lib/AppleSiliconHarmony.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="lib/libapple_silicon_harmony_native.dylib" DestinationFolder="$(DeployDir)" />
 
     <!-- Copy content directories flat -->
     <ItemGroup>
