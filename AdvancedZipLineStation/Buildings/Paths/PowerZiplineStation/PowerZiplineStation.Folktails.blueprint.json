@@ -9,18 +9,18 @@
       },
       {
         "Id": "Plank",
-        "Amount": 20
+        "Amount": 30
       },
       {
         "Id": "Gear",
-        "Amount": 10
+        "Amount": 15
       },
       {
         "Id": "MetalBlock",
-        "Amount": 10
+        "Amount": 15
       }
     ],
-    "ScienceCost": 1050,
+    "ScienceCost": 1000,
     "PlaceFinished": false,
     "FinishableWithBeaversOnSite": false,
     "DrawRangeBoundsOnIt": false
