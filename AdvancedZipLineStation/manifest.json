@@ -3,5 +3,5 @@
     "Version": "1.0.0",
     "Id": "AdvancedZipLineStation",
     "MinimumGameVersion": "1.0.0.0",
-    "Description": "A larger zipline station with 3 connection points and mechanical shaft support."
+    "Description": "An advanced zipline station with 3 connections and mechanical power transfer through cables."
 }
