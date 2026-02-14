@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>embedded</DebugType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GameManagedDir>$(HOME)/Library/Application Support/Steam/steamapps/common/Timberborn/Timberborn.app/Contents/Resources/Data/Managed</GameManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(GameManagedDir)/Timberborn.*.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/Bindito.*.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/UnityEngine.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/UnityEngine.CoreModule.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/System.Collections.Immutable.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Buildings/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="TemplateCollections/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Localizations/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="DeployMod" AfterTargets="Build">
+    <PropertyGroup>
+      <DeployDir>$(HOME)/Documents/Timberborn/Mods/TreeSpring</DeployDir>
+    </PropertyGroup>
+
+    <!-- Copy manifest.json and DLL to root of deploy dir -->
+    <Copy SourceFiles="$(OutputPath)/manifest.json" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(OutputPath)/TreeSpring.dll" DestinationFolder="$(DeployDir)" />
+
+    <!-- Copy content directories flat -->
+    <ItemGroup>
+      <LocalizationFiles Include="$(OutputPath)/Localizations/**/*" />
+      <BuildingFiles Include="$(OutputPath)/Buildings/**/*" />
+      <TemplateFiles Include="$(OutputPath)/TemplateCollections/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LocalizationFiles)" DestinationFolder="$(DeployDir)/Localizations/%(RecursiveDir)" />
+    <Copy SourceFiles="@(BuildingFiles)" DestinationFolder="$(DeployDir)/Buildings/%(RecursiveDir)" />
+    <Copy SourceFiles="@(TemplateFiles)" DestinationFolder="$(DeployDir)/TemplateCollections/%(RecursiveDir)" />
+  </Target>
+
+</Project>
