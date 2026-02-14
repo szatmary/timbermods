@@ -6,9 +6,28 @@ Custom mods for Timberborn.
 
 - **[PowerZipline](PowerZipline/)** — Power zipline buildings with mechanical power transfer through cables
 
-## Prerequisites
+## How to Install
 
-### macOS
+1. Go to the [Releases](https://github.com/szatmary/timbermods/releases) page and download the `.zip` file for the mod you want
+2. Find your Timberborn mods folder:
+   - **Windows**: `Documents\Timberborn\Mods\`
+   - **macOS**: `~/Documents/Timberborn/Mods/`
+   - **Linux**: `~/.config/unity3d/Mechanistry/Timberborn/Mods/`
+3. Create a new folder inside `Mods/` (e.g. `PowerZipline`)
+4. Extract the zip contents into that folder
+5. Launch Timberborn — it will automatically detect the new mod and ask you to enable it on startup
+
+To uninstall, delete the mod's folder and restart the game.
+
+---
+
+## Developer Guide
+
+Everything below is for building mods from source.
+
+### Prerequisites
+
+#### macOS
 
 1. Install the .NET SDK via Homebrew:
    ```bash
@@ -16,7 +35,7 @@ Custom mods for Timberborn.
    ```
 2. Timberborn v1.0+ installed via Steam
 
-### Windows
+#### Windows
 
 > **Note:** Windows build support is untested. Patches welcome!
 
@@ -24,14 +43,14 @@ Custom mods for Timberborn.
 2. Timberborn v1.0+ installed via Steam
 3. PowerShell 5.1+ (included with Windows 10/11)
 
-### Linux
+#### Linux
 
 > **Note:** Linux build support is untested. Patches welcome!
 
 1. Install the [.NET SDK](https://dotnet.microsoft.com/download) (6.0+ recommended) via your package manager or the official install script
 2. Timberborn v1.0+ installed via Steam
 
-## Building
+### Building
 
 Use the provided build scripts from the repo root. They auto-detect paths and deploy mods to the correct location.
 
@@ -55,38 +74,6 @@ Use the provided build scripts from the repo root. They auto-detect paths and de
 
 The build scripts compile each mod and deploy files to the Timberborn mods directory automatically.
 
-## Mod Installation (Pre-built)
-
-If you want to install a pre-built mod manually:
-
-1. Find your Timberborn mods folder:
-   - **macOS**: `~/Documents/Timberborn/Mods/`
-   - **Windows**: `%USERPROFILE%\Documents\Timberborn\Mods\`
-   - **Linux**: `~/.config/unity3d/Mechanistry/Timberborn/Mods/`
-
-2. Create a folder for the mod (e.g. `PowerZipline/`)
-
-3. Copy the mod files into it with a flat structure:
-   ```
-   Mods/
-   └── ModName/
-       ├── manifest.json
-       ├── ModName.dll
-       ├── 0Harmony.dll          (if the mod uses Harmony)
-       ├── Localizations/
-       │   └── enUS.csv
-       ├── Buildings/
-       │   └── ...
-       └── TemplateCollections/
-           └── ...
-   ```
-
-4. Launch Timberborn — the mod appears in the built-in mod manager (main menu > Mods). Enable it and set load order if needed.
-
-## Uninstalling
-
-Delete the mod's folder from the `Mods/` directory and restart the game.
-
-## Game Version
+### Game Version
 
 Built and tested against Timberborn **v1.0.8.0** on macOS.
