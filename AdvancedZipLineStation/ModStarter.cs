@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using HarmonyLib;
 using Timberborn.ModManagerScene;
 
@@ -7,7 +8,10 @@ public class ModStarter : IModStarter
 {
     public void StartMod(IModEnvironment modEnvironment)
     {
-        Anatawa12.AppleSiliconHarmony.Patcher.Patch();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            && RuntimeInformation.OSArchitecture == Architecture.Arm64)
+            Anatawa12.AppleSiliconHarmony.Patcher.Patch();
+
         new Harmony("AdvancedZipLineStation").PatchAll();
     }
 }
