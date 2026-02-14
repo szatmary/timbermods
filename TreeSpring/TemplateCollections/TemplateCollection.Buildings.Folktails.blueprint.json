@@ -1,8 +1,0 @@
-{
-  "TemplateCollectionSpec": {
-    "CollectionId": "Buildings.Folktails",
-    "Blueprints#append": [
-      "Buildings/Power/TreeSpring/TreeSpring.Folktails.blueprint"
-    ]
-  }
-}

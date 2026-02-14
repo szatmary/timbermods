@@ -1,7 +1,0 @@
-{
-    "Name": "Tree Spring",
-    "Version": "1.0.0",
-    "Id": "TreeSpring",
-    "MinimumGameVersion": "1.0.0.0",
-    "Description": "A tree-based mechanical power storage building. A winch bends a tree to store energy."
-}
