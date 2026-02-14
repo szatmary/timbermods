@@ -1,6 +1,6 @@
 using Bindito.Core;
 using Timberborn.SingletonSystem;
-namespace AdvancedZipLineStation;
+namespace PowerZipline;
 
 /// <summary>
 /// Registers a singleton that retries graph merges after all entities are loaded

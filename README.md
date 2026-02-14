@@ -4,7 +4,7 @@ Custom mods for Timberborn.
 
 ## Mods
 
-- **[AdvancedZipLineStation](AdvancedZipLineStation/)** — Upgraded zipline station with 3 connections and power transfer through cables
+- **[PowerZipline](PowerZipline/)** — Power zipline buildings with mechanical power transfer through cables
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ Use the provided build scripts from the repo root. They auto-detect paths and de
 ./build.sh
 
 # Build a specific mod
-./build.sh AdvancedZipLineStation
+./build.sh PowerZipline
 ```
 
 **Windows (PowerShell):**
@@ -50,7 +50,7 @@ Use the provided build scripts from the repo root. They auto-detect paths and de
 .\build.ps1
 
 # Build a specific mod
-.\build.ps1 -Mods AdvancedZipLineStation
+.\build.ps1 -Mods PowerZipline
 ```
 
 The build scripts compile each mod and deploy files to the Timberborn mods directory automatically.
@@ -64,7 +64,7 @@ If you want to install a pre-built mod manually:
    - **Windows**: `%USERPROFILE%\Documents\Timberborn\Mods\`
    - **Linux**: `~/.config/unity3d/Mechanistry/Timberborn/Mods/`
 
-2. Create a folder for the mod (e.g. `AdvancedZipLineStation/`)
+2. Create a folder for the mod (e.g. `PowerZipline/`)
 
 3. Copy the mod files into it with a flat structure:
    ```

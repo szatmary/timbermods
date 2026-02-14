@@ -54,12 +54,12 @@
 
   <Target Name="DeployMod" AfterTargets="Build">
     <PropertyGroup>
-      <DeployDir>$(HOME)/Documents/Timberborn/Mods/AdvancedZipLineStation</DeployDir>
+      <DeployDir>$(HOME)/Documents/Timberborn/Mods/PowerZipline</DeployDir>
     </PropertyGroup>
 
     <!-- Copy manifest.json, DLL, and Harmony to root of deploy dir -->
     <Copy SourceFiles="$(OutputPath)/manifest.json" DestinationFolder="$(DeployDir)" />
-    <Copy SourceFiles="$(OutputPath)/AdvancedZipLineStation.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(OutputPath)/PowerZipline.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="$(HarmonyDir)/0Harmony.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="lib/AppleSiliconHarmony.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="lib/libapple_silicon_harmony_native.dylib" DestinationFolder="$(DeployDir)" />

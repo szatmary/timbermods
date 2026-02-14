@@ -2,7 +2,7 @@ using System.Reflection;
 using HarmonyLib;
 using Timberborn.MechanicalSystem;
 using Timberborn.ZiplineSystem;
-namespace AdvancedZipLineStation;
+namespace PowerZipline;
 
 /// <summary>
 /// Harmony patches that bridge the zipline and mechanical power systems.
