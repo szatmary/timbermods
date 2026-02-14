@@ -5,7 +5,6 @@ Custom mods for Timberborn.
 ## Mods
 
 - **[AdvancedZipLineStation](AdvancedZipLineStation/)** — Upgraded zipline station with 3 connections and power transfer through cables
-- **[TreeSpring](TreeSpring/)** — Tree-based mechanical power storage building (WIP)
 
 ## Prerequisites
 
