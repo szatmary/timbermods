@@ -9,15 +9,16 @@ namespace AdvancedZipLineStation;
 /// When two stations with MechanicalNodes are connected via zipline cable,
 /// their mechanical graphs are merged so power flows through the connection.
 ///
-/// Instead of connecting transputs (which breaks the UI graph traversal),
-/// we directly merge graphs via Join() and track our virtual connections
-/// so we can re-merge after any graph reorganization.
+/// Graph merging (Join) keeps nodes in the same power graph.
+/// A postfix on MechanicalGraphIterator.Iterate extends the UI highlighting
+/// to include bridged nodes that aren't physically connected via transputs.
 /// </summary>
 [HarmonyPatch]
 public static class ZiplinePowerTransferPatch
 {
     // Track active zipline power bridges (pairs of MechanicalNodes)
     private static readonly HashSet<(MechanicalNode, MechanicalNode)> _bridges = new();
+    private static bool _hasPendingMerges;
 
     // Cached reflection for accessing internal game types
     private static readonly FieldInfo? GraphManagerField = typeof(MechanicalNode).GetField(
@@ -29,14 +30,15 @@ public static class ZiplinePowerTransferPatch
         "Join", BindingFlags.Public | BindingFlags.Instance);
 
     /// <summary>
-    /// After a new zipline connection is established between active towers.
+    /// After a zipline connection is established (both gameplay and save-load restore).
+    /// No IsActive guard — on load, Connect fires from PostInitializeEntity before
+    /// OnEnterFinishedState, so we track the bridge early and merge when graphs exist.
     /// </summary>
     [HarmonyPatch(typeof(ZiplineConnectionService), nameof(ZiplineConnectionService.Connect))]
     [HarmonyPostfix]
     public static void ConnectPostfix(ZiplineTower ziplineTower, ZiplineTower otherZiplineTower)
     {
-        if (ziplineTower.IsActive && otherZiplineTower.IsActive)
-            TryBridge(ziplineTower, otherZiplineTower);
+        TryBridge(ziplineTower, otherZiplineTower);
     }
 
     /// <summary>
@@ -47,6 +49,41 @@ public static class ZiplinePowerTransferPatch
     public static void ActivateConnectionPostfix(ZiplineTower ziplineTower, ZiplineTower otherZiplineTower)
     {
         TryBridge(ziplineTower, otherZiplineTower);
+    }
+
+    /// <summary>
+    /// When a tower enters finished state, bridge all its current connections.
+    /// This is the key hook for save-load: by this point MechanicalNode graphs
+    /// are initialized and ConnectionTargets are populated from saved data.
+    /// Uses TargetMethod to safely resolve the method (may be explicit interface impl).
+    /// </summary>
+    [HarmonyPatch]
+    public static class OnEnterFinishedStatePatch
+    {
+        static MethodBase? TargetMethod()
+        {
+            return typeof(ZiplineTower).GetMethod("OnEnterFinishedState",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(ZiplineTower __instance)
+        {
+            var nodeA = __instance.GetComponent<MechanicalNode>();
+            if (nodeA == null) return;
+
+            foreach (var target in __instance.ConnectionTargets)
+            {
+                if (target == null) continue;
+                var nodeB = target.GetComponent<MechanicalNode>();
+                if (nodeB == null) continue;
+
+                if (!_bridges.Contains((nodeA, nodeB)) && !_bridges.Contains((nodeB, nodeA)))
+                    _bridges.Add((nodeA, nodeB));
+
+                MergeGraphs(nodeA, nodeB);
+            }
+        }
     }
 
     /// <summary>
@@ -93,6 +130,75 @@ public static class ZiplinePowerTransferPatch
         }
     }
 
+    /// <summary>
+    /// After the UI graph iterator finishes traversing transputs, inject our
+    /// bridged nodes so they appear in the network highlight when selected.
+    /// The iterator walks physical transput connections via DFS but can't see
+    /// our virtual zipline bridges, so we expand the result set.
+    /// </summary>
+    [HarmonyPatch]
+    public static class GraphIteratorPostfixPatch
+    {
+        static MethodBase? TargetMethod()
+        {
+            var iteratorType = typeof(MechanicalNode).Assembly
+                .GetType("Timberborn.MechanicalSystemHighlighting.MechanicalGraphIterator")
+                ?? AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType("Timberborn.MechanicalSystemHighlighting.MechanicalGraphIterator"))
+                    .FirstOrDefault(t => t != null);
+            return iteratorType?.GetMethod("Iterate", BindingFlags.Public | BindingFlags.Instance);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(ICollection<MechanicalNode> graphNodes)
+        {
+            ExpandWithBridgedNodes(graphNodes);
+        }
+    }
+
+    /// <summary>
+    /// The transput DFS only finds physically adjacent nodes. Since our merged
+    /// graph contains nodes from both sides of zipline bridges, we expand the
+    /// result to include ALL nodes in the graph — giving full network highlighting.
+    /// </summary>
+    private static void ExpandWithBridgedNodes(ICollection<MechanicalNode> graphNodes)
+    {
+        if (_bridges.Count == 0 || graphNodes.Count == 0) return;
+
+        // Collect graphs that have bridges
+        var bridgedGraphs = new HashSet<MechanicalGraph>();
+        foreach (var (a, b) in _bridges)
+        {
+            if (a?.Graph != null) bridgedGraphs.Add(a.Graph);
+            if (b?.Graph != null) bridgedGraphs.Add(b.Graph);
+        }
+
+        if (bridgedGraphs.Count == 0) return;
+
+        // If any node from the DFS result is in a bridged graph, add all
+        // nodes from that graph (includes both sides of the zipline)
+        MechanicalGraph? targetGraph = null;
+        foreach (var node in graphNodes)
+        {
+            if (node?.Graph != null && bridgedGraphs.Contains(node.Graph))
+            {
+                targetGraph = node.Graph;
+                break;
+            }
+        }
+
+        if (targetGraph == null) return;
+
+        var nodesToAdd = new List<MechanicalNode>();
+        foreach (var node in targetGraph.Nodes)
+        {
+            if (!graphNodes.Contains(node))
+                nodesToAdd.Add(node);
+        }
+        foreach (var node in nodesToAdd)
+            graphNodes.Add(node);
+    }
+
     private static void TryBridge(ZiplineTower towerA, ZiplineTower towerB)
     {
         var nodeA = towerA.GetComponent<MechanicalNode>();
@@ -100,12 +206,12 @@ public static class ZiplinePowerTransferPatch
         if (nodeA == null || nodeB == null)
             return;
 
-        // Already tracked
-        if (_bridges.Contains((nodeA, nodeB)))
-            return;
+        // Track the bridge (avoid duplicates in both orderings)
+        if (!_bridges.Contains((nodeA, nodeB)) && !_bridges.Contains((nodeB, nodeA)))
+            _bridges.Add((nodeA, nodeB));
 
-        _bridges.Add((nodeA, nodeB));
-
+        // Always attempt merge — a previous call may have failed due to null graphs
+        // during early initialization. MergeGraphs is safe to call repeatedly.
         MergeGraphs(nodeA, nodeB);
     }
 
@@ -114,9 +220,20 @@ public static class ZiplinePowerTransferPatch
         var graphA = nodeA.Graph;
         var graphB = nodeB.Graph;
         if (graphA != null && graphB != null && graphA != graphB)
-        {
             InvokeJoin(nodeA, graphA, graphB);
-        }
+        else if (graphA == null || graphB == null)
+            _hasPendingMerges = true;
+    }
+
+    /// <summary>
+    /// Called by ZiplinePowerMergeRetrier after load and on each tick.
+    /// Retries merges that failed due to null graphs during initialization.
+    /// </summary>
+    public static void RetryPendingMerges()
+    {
+        if (!_hasPendingMerges) return;
+        _hasPendingMerges = false;
+        RemergeAllBridges();
     }
 
     /// <summary>
@@ -124,10 +241,11 @@ public static class ZiplinePowerTransferPatch
     /// </summary>
     private static void RemergeAllBridges()
     {
+        // Clean up bridges to destroyed buildings
+        _bridges.RemoveWhere(b => b.Item1 == null || b.Item2 == null);
+
         foreach (var (nodeA, nodeB) in _bridges)
         {
-            if (nodeA == null || nodeB == null)
-                continue;
             var graphA = nodeA.Graph;
             var graphB = nodeB.Graph;
             if (graphA != null && graphB != null && graphA != graphB)

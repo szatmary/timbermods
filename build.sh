@@ -90,3 +90,16 @@ echo "Deployed mods:"
 for mod in "${MODS[@]}"; do
     echo "  $MODS_DIR/$mod/"
 done
+
+# Create zip artifacts in dist/
+DIST_DIR="$SCRIPT_DIR/dist"
+mkdir -p "$DIST_DIR"
+for mod in "${MODS[@]}"; do
+    DEPLOY_DIR="$MODS_DIR/$mod"
+    ZIP_FILE="$DIST_DIR/$mod.zip"
+    rm -f "$ZIP_FILE"
+    (cd "$DEPLOY_DIR" && zip -r "$ZIP_FILE" .)
+    echo "  Artifact: $ZIP_FILE"
+done
+echo ""
+echo "Zip artifacts in dist/"
