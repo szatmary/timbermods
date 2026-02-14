@@ -193,9 +193,7 @@
     "ForceOneFinalAccess": true
   },
   "ConstructionSiteProgressVisualizerSpec": {
-    "ProgressThresholds": [
-      0.0
-    ]
+    "ProgressThresholds": []
   },
   "BlockObjectNavMeshSettingsSpec": {
     "NoAutoWalls": false,

@@ -12,3 +12,6 @@ Full production chain mod:
   - Very high happiness bonus for beavers who consume it
   - Reduces worker efficiency (tipsy beavers)
   - Bots can use wine as fuel
+
+## Lifespan Randomizer
+Randomly add +/- days to beaver lifespan to reduce synchronized waves of births and deaths. Would likely need Harmony to patch the aging/lifespan system. Feasibility depends on whether lifespan is a single fixed value or configurable per-beaver.
