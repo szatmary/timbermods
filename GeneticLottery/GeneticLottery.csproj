@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>embedded</DebugType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GameManagedDir>$(HOME)/Library/Application Support/Steam/steamapps/common/Timberborn/Timberborn.app/Contents/Resources/Data/Managed</GameManagedDir>
+    <HarmonyDir>$(NuGetPackageRoot)lib.harmony/2.4.2/lib/net48</HarmonyDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="HarmonyLib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(GameManagedDir)/Timberborn.*.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/Bindito.*.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/UnityEngine.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GameManagedDir)/UnityEngine.CoreModule.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AppleSiliconHarmony">
+      <HintPath>lib/AppleSiliconHarmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="DeployMod" AfterTargets="Build">
+    <PropertyGroup>
+      <DeployDir>$(HOME)/Documents/Timberborn/Mods/GeneticLottery</DeployDir>
+    </PropertyGroup>
+
+    <Copy SourceFiles="$(OutputPath)/manifest.json" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(OutputPath)/GeneticLottery.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(HarmonyDir)/0Harmony.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="lib/AppleSiliconHarmony.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="lib/libapple_silicon_harmony_native.dylib" DestinationFolder="$(DeployDir)" />
+  </Target>
+
+</Project>

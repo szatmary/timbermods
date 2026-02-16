@@ -1,0 +1,7 @@
+{
+    "Name": "Dynamite Rubble",
+    "Version": "1.0.0",
+    "Id": "DynamiteRubble",
+    "MinimumGameVersion": "1.0.0.0",
+    "Description": "Dynamite and tunnel explosions leave behind Dirt rubble. Produces 3 Dirt per terrain block destroyed."
+}

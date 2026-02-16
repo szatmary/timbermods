@@ -1,0 +1,7 @@
+{
+    "Name": "Genetic Lottery",
+    "Version": "1.0.0",
+    "Id": "GeneticLottery",
+    "MinimumGameVersion": "1.0.0.0",
+    "Description": "Each beaver born gets a random lifespan modifier of +/- 10%, displayed as a Genetic Lottery bonus."
+}
