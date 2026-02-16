@@ -1,0 +1,36 @@
+Title: Dynamite Rubble
+
+Short Description:
+Dynamite and tunnel explosions now leave behind Dirt rubble. No more free terrain removal!
+
+Description:
+[h1]Dynamite Rubble[/h1]
+
+Explosions shouldn't just make terrain vanish into thin air. With this mod, every terrain block destroyed by dynamite or tunnel construction leaves behind recoverable Dirt.
+
+[h2]How It Works[/h2]
+[list]
+[*] [b]Dynamite[/b] produces 3 Dirt per terrain block actually destroyed
+[*] [b]Tunnels[/b] produce 3 Dirt when construction finishes
+[*] Triple dynamite on solid ground? 9 Dirt. On a 1-block overhang? Just 3.
+[*] The mod counts actual terrain removed — overhangs and thin columns are handled correctly
+[/list]
+
+Dirt appears as a recoverable good stack at the explosion site, just like when you demolish a building.
+
+[h2]Examples[/h2]
+[list]
+[*] Single dynamite on solid ground: 3 Dirt
+[*] Double dynamite on solid ground: 6 Dirt
+[*] Triple dynamite on solid ground: 9 Dirt
+[*] Triple dynamite on a 2-block overhang: 6 Dirt
+[*] Any dynamite on a 1-block overhang: 3 Dirt
+[*] Tunnel: 3 Dirt
+[/list]
+
+[h2]Compatibility[/h2]
+[list]
+[*] Timberborn v1.0.0.0+
+[*] Works with all factions
+[*] Safe to add to existing saves
+[/list]
