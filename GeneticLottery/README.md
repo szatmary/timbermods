@@ -1,11 +1,12 @@
 # Genetic Lottery
 
-A Timberborn mod that gives each beaver a random lifespan modifier at birth.
+A Timberborn mod that prevents death waves and evens out colony playability by giving each beaver a random lifespan modifier at birth. In vanilla, beavers born at the same time all die at the same time, creating population waves and boom/bust cycles. This mod spreads out lifespans so deaths occur gradually instead of all at once.
 
 ## Features
 
 - Every beaver born receives a random Life Expectancy bonus between -10% and +10%
-- Some beavers live longer, some shorter — adding natural variation to your colony
+- Prevents death waves by desynchronizing lifespans across your colony
+- Smooths out population fluctuations for more stable, predictable gameplay
 - The bonus is visible in the beaver's bonus panel as "Life Expectancy"
 - Applied through the game's existing bonus system and persists for the beaver's entire life
 
