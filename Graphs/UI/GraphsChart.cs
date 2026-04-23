@@ -79,6 +79,8 @@ public sealed class GraphsChart
         }
     }
 
+    private static bool _loggedChartDiag;
+
     private void DrawLines(
         MeshGenerationContext ctx, Rect rect, MetricHistory history,
         int startIdx, int endIdx, float startT, float endT)
@@ -88,11 +90,28 @@ public sealed class GraphsChart
         int sampleCount = endIdx - startIdx;
         if (sampleCount < 1) return;
 
+        bool logThis = !_loggedChartDiag && sampleCount >= 5;
+        if (logThis)
+        {
+            _loggedChartDiag = true;
+            Debug.Log($"[Graphs] chart draw: rect=({rect.x:F1},{rect.y:F1} {rect.width:F1}x{rect.height:F1}) span={span:F3} samples={sampleCount} startIdx={startIdx} endIdx={endIdx}");
+        }
+
         var metrics = _registry.Metrics;
         for (int m = 0; m < metrics.Count; m++)
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+
+            if (logThis)
+            {
+                int nanCount = 0;
+                for (int i = startIdx; i < endIdx; i++)
+                    if (float.IsNaN(history.ReadValue(i, m))) nanCount++;
+                float v0 = history.ReadValue(startIdx, m);
+                float vN = history.ReadValue(endIdx - 1, m);
+                Debug.Log($"[Graphs] visible metric '{def.Id}': first={v0} last={vN} nan={nanCount}/{sampleCount}");
+            }
 
             float min = float.PositiveInfinity, max = float.NegativeInfinity;
             for (int i = startIdx; i < endIdx; i++)
