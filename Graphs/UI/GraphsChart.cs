@@ -122,6 +122,13 @@ public sealed class GraphsChart
             float range = max - min;
             Color color = GraphColors.ColorFor(def.Id, def.Category);
 
+            // Inset the y-axis slightly so lines at min/max values aren't
+            // clipped against the chart edges.
+            const float yMargin = 6f;
+            float innerTop = rect.y + yMargin;
+            float innerBottom = rect.y + rect.height - yMargin;
+            float innerHeight = innerBottom - innerTop;
+
             bool havePrev = false;
             Vector2 prev = default;
             for (int i = startIdx; i < endIdx; i++)
@@ -129,18 +136,15 @@ public sealed class GraphsChart
                 float v = history.ReadValue(i, m);
                 if (float.IsNaN(v)) { havePrev = false; continue; }
                 float t = history.ReadTimestamp(i);
-                // When span is 0 (single sample) pin to right edge.
                 float x = span > 0 ? rect.x + ((t - startT) / span) * rect.width : rect.xMax - 4;
                 float norm = range > 0 ? (v - min) / range : 0.5f;
-                float y = rect.y + rect.height - norm * rect.height;
+                float y = innerBottom - norm * innerHeight;
 
+                // Dot at every sample — guarantees visibility regardless of
+                // segment renderer quirks.
+                FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
                 if (havePrev)
-                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 2f);
-                else
-                    // Draw a small dot at the first point so a single-sample metric
-                    // is still visible (otherwise a fresh game shows a blank chart
-                    // until the second hourly sample arrives).
-                    FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
+                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 3f);
                 prev = new Vector2(x, y);
                 havePrev = true;
             }
