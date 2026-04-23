@@ -1,3 +1,4 @@
+using Graphs.Metrics;
 using Timberborn.RootProviders;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -15,6 +16,9 @@ public sealed class GraphsWindow
     private readonly GraphsDistrictSelector _districtSelector;
     private readonly GraphsLegend _legend;
     private readonly GraphsChart _chart;
+    private readonly MetricSampler _sampler;
+    private readonly MetricRegistry _registry;
+    private readonly DistrictFilter _filter;
     private UIDocument? _document;
     private VisualElement? _root;
 
@@ -25,13 +29,19 @@ public sealed class GraphsWindow
         GraphsRangeSelector rangeSelector,
         GraphsDistrictSelector districtSelector,
         GraphsLegend legend,
-        GraphsChart chart)
+        GraphsChart chart,
+        MetricSampler sampler,
+        MetricRegistry registry,
+        DistrictFilter filter)
     {
         _rootProvider = rootProvider;
         _rangeSelector = rangeSelector;
         _districtSelector = districtSelector;
         _legend = legend;
         _chart = chart;
+        _sampler = sampler;
+        _registry = registry;
+        _filter = filter;
     }
 
     public void Toggle()
@@ -48,11 +58,19 @@ public sealed class GraphsWindow
         _root = Build();
         _document.rootVisualElement.Add(_root);
         _root.Focus();
+
+        _sampler.OnSampled += RefreshValues;
+        _filter.Changed += _chart.Repaint;
+        RefreshValues();
     }
 
     public void Close()
     {
         if (_root == null) return;
+
+        _sampler.OnSampled -= RefreshValues;
+        _filter.Changed -= _chart.Repaint;
+
         _root.RemoveFromHierarchy();
         _root = null;
         if (_document != null)
@@ -60,6 +78,18 @@ public sealed class GraphsWindow
             UnityEngine.Object.Destroy(_document.gameObject);
             _document = null;
         }
+    }
+
+    private void RefreshValues()
+    {
+        var history = _sampler.History;
+        if (history.Count == 0) return;
+        int last = history.Count - 1;
+        _legend.UpdateCurrentValues(id =>
+        {
+            int idx = _registry.IndexOf(id);
+            return idx < 0 ? float.NaN : history.ReadValue(last, idx);
+        });
     }
 
     private VisualElement Build()
