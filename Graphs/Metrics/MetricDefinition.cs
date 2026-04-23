@@ -14,6 +14,13 @@ public sealed class MetricDefinition
     /// Null = no sub-grouping.
     public string? SubGroup { get; }
 
+    /// Optional chart-scale override. The chart shares a y-scale across all
+    /// metrics with the same `ScaleGroup` key. When null, the Category name
+    /// is used — so by default each category has its own scale. Setting this
+    /// lets categories that are visually separate (e.g. Bots vs Population)
+    /// share a scale for direct comparison.
+    public string ScaleGroup { get; }
+
     /// <param name="districtName">
     /// Specific district name when the filter is set to one district, or
     /// null for "all districts" (settlement-wide aggregation).
@@ -26,7 +33,8 @@ public sealed class MetricDefinition
         MetricCategory category,
         MetricScope scope,
         Func<string?, float> valueFn,
-        string? subGroup = null)
+        string? subGroup = null,
+        string? scaleGroup = null)
     {
         Id = id;
         NameLocKey = nameLocKey;
@@ -34,5 +42,6 @@ public sealed class MetricDefinition
         Scope = scope;
         ValueFn = valueFn;
         SubGroup = subGroup;
+        ScaleGroup = scaleGroup ?? category.ToString();
     }
 }

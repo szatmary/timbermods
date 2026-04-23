@@ -95,25 +95,26 @@ public sealed class GraphsChart
         int sampleCount = endIdx - startIdx;
         if (sampleCount < 1) return;
 
-        // Pass 1: compute per-category max across every visible metric in the
-        // category. Min is pinned to 0 so y=0 always represents "no stock /
-        // no beavers / no hunger satisfaction" — a log count of 100 sits half
-        // way up when the category's max is 200.
-        var categoryMax = new Dictionary<MetricCategory, float>();
+        // Pass 1: compute per-ScaleGroup max across every visible metric in
+        // that group. Min is pinned to 0 so y=0 always represents "no stock /
+        // no beavers / no hunger satisfaction". ScaleGroup defaults to the
+        // Category name but metrics can override (e.g. Bots shares the
+        // Population scale while having its own legend section).
+        var scaleMax = new Dictionary<string, float>(StringComparer.Ordinal);
         var metrics = _registry.Metrics;
         for (int m = 0; m < metrics.Count; m++)
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
 
-            categoryMax.TryGetValue(def.Category, out var cur);
+            scaleMax.TryGetValue(def.ScaleGroup, out var cur);
             for (int i = startIdx; i < endIdx; i++)
             {
                 float v = history.ReadValue(i, m);
                 if (float.IsNaN(v)) continue;
                 if (v > cur) cur = v;
             }
-            categoryMax[def.Category] = cur;
+            scaleMax[def.ScaleGroup] = cur;
         }
 
         // Top gets a small inset so a value at catMax isn't clipped.
@@ -128,7 +129,7 @@ public sealed class GraphsChart
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
-            if (!categoryMax.TryGetValue(def.Category, out var catMax)) continue;
+            if (!scaleMax.TryGetValue(def.ScaleGroup, out var catMax)) continue;
 
             Color color = GraphColors.ColorFor(def.Id, def.Category);
 

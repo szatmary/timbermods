@@ -37,7 +37,11 @@ public sealed class PopulationMetricProvider : IMetricProvider
         yield return FromData("pop.total",  "Graphs.Metric.Total",  d => d.TotalPopulation, "Population");
         yield return FromData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults,   "Population");
         yield return FromData("pop.kits",   "Graphs.Metric.Kits",   d => d.NumberOfChildren, "Population");
-        yield return FromData("pop.bots",   "Graphs.Metric.Bots",   d => d.NumberOfBots,     "Population");
+        // Bots get their own legend category, but share the Population chart
+        // scale so bot counts can be compared visually against beaver counts.
+        yield return InCategory(MetricCategory.Bots,
+            "pop.bots", "Graphs.Metric.Bots", d => d.NumberOfBots,
+            subGroup: null, scaleGroup: nameof(MetricCategory.Population));
 
         // Quarters (beds)
         yield return FromData("pop.homeless",      "Graphs.Metric.Homeless",     d => d.BedData.Homeless,     "Quarters");
@@ -83,9 +87,10 @@ public sealed class PopulationMetricProvider : IMetricProvider
 
     private MetricDefinition InCategory(
         MetricCategory category, string id, string locKey,
-        System.Func<PopulationData, int> extract, string? subGroup) =>
+        System.Func<PopulationData, int> extract,
+        string? subGroup = null, string? scaleGroup = null) =>
         new(id, locKey, category, MetricScope.District,
-            districtName => ExtractFor(districtName, extract), subGroup);
+            districtName => ExtractFor(districtName, extract), subGroup, scaleGroup);
 
     private float ExtractFor(string? districtName, System.Func<PopulationData, int> extract)
     {
