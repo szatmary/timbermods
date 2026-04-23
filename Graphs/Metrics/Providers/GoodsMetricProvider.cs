@@ -4,6 +4,7 @@ using System.Linq;
 using Timberborn.GameDistricts;
 using Timberborn.Goods;
 using Timberborn.InventorySystem;
+using UnityEngine;
 
 namespace Graphs.Metrics.Providers;
 
@@ -52,27 +53,44 @@ public sealed class GoodsMetricProvider : IMetricProvider
         }
     }
 
+    private static bool _loggedStockDiagnostic;
+
     /// Sum `goodId` stock across inventories that pass the district filter.
     /// A null `districtName` means settlement-wide: every inventory counts.
-    /// Exceptions from a single inventory are swallowed so one broken component
-    /// can't zero the whole total.
+    /// Exceptions are swallowed so one broken component can't zero the total;
+    /// the first one we see is logged once to aid debugging.
     private float TotalStock(string goodId, string? districtName)
     {
         var total = 0;
-        foreach (var inventory in _districtInventoryRegistry.Inventories)
+        try
         {
-            try
+            foreach (var inventory in _districtInventoryRegistry.Inventories)
             {
-                if (districtName != null && GetDistrictName(inventory) != districtName)
+                if (inventory == null) continue;
+                try
                 {
-                    continue;
+                    if (districtName != null && GetDistrictName(inventory) != districtName)
+                    {
+                        continue;
+                    }
+                    total += inventory.AmountInStock(goodId);
                 }
-                total += inventory.AmountInStock(goodId);
+                catch (Exception ex)
+                {
+                    if (!_loggedStockDiagnostic)
+                    {
+                        _loggedStockDiagnostic = true;
+                        Debug.LogWarning($"[Graphs] inventory stock probe failed for '{goodId}': {ex}");
+                    }
+                }
             }
-            catch
+        }
+        catch (Exception ex)
+        {
+            if (!_loggedStockDiagnostic)
             {
-                // Skip inventories that can't answer — don't let one bad component
-                // mask the rest of the settlement's stock.
+                _loggedStockDiagnostic = true;
+                Debug.LogWarning($"[Graphs] goods enumeration failed: {ex}");
             }
         }
         return total;
