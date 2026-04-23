@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Timberborn.GameDistricts;
 using Timberborn.Goods;
 using Timberborn.InventorySystem;
@@ -56,18 +57,69 @@ public sealed class GoodsMetricProvider : IMetricProvider
     private static bool _loggedStockDiagnostic;
     private static bool _loggedInventoryCount;
 
+    // Reflection-resolved access to the game-internal InventoryRegistry,
+    // which is the settlement-wide inventory set (DistrictInventoryRegistry
+    // is a wrapper whose `Inventories` getter throws NRE in our context).
+    private static FieldInfo? _publicInventoryRegistryField;
+    private static PropertyInfo? _innerInventoriesProp;
+    private static bool _reflectionResolved;
+
+    private IEnumerable<Inventory> EnumerateInventories()
+    {
+        if (!_reflectionResolved)
+        {
+            _reflectionResolved = true;
+            try
+            {
+                var regType = _districtInventoryRegistry.GetType();
+                _publicInventoryRegistryField = regType.GetField(
+                    "_publicInventoryRegistry",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                var innerType = _publicInventoryRegistryField?.FieldType
+                    ?? typeof(Inventory).Assembly.GetType("Timberborn.InventorySystem.InventoryRegistry");
+                _innerInventoriesProp = innerType?.GetProperty(
+                    "Inventories",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? innerType?.GetProperty(
+                        "AllInventories",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? innerType?.GetProperty(
+                        "EnabledInventories",
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                Debug.Log(
+                    $"[Graphs] reflection: publicInventoryRegistryField={_publicInventoryRegistryField != null} "
+                    + $"innerProp={_innerInventoriesProp?.Name}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Graphs] reflection setup failed: {ex.Message}");
+            }
+        }
+
+        if (_publicInventoryRegistryField == null || _innerInventoriesProp == null)
+            return Enumerable.Empty<Inventory>();
+
+        var inner = _publicInventoryRegistryField.GetValue(_districtInventoryRegistry);
+        if (inner == null) return Enumerable.Empty<Inventory>();
+
+        if (_innerInventoriesProp.GetValue(inner) is IEnumerable<Inventory> typed)
+            return typed;
+        if (_innerInventoriesProp.GetValue(inner) is System.Collections.IEnumerable raw)
+            return raw.Cast<Inventory>();
+
+        return Enumerable.Empty<Inventory>();
+    }
+
     /// Sum `goodId` stock across inventories that pass the district filter.
     /// A null `districtName` means settlement-wide: every inventory counts.
-    /// Iterates ALL inventories (not the pre-filtered ActiveInventoriesWithStock
-    /// index) because starter resources may live in inventories that aren't in
-    /// the index yet.
     private float TotalStock(string goodId, string? districtName)
     {
         var total = 0;
         var anyInventory = false;
         try
         {
-            foreach (var inventory in _districtInventoryRegistry.Inventories)
+            foreach (var inventory in EnumerateInventories())
             {
                 if (inventory == null) continue;
                 anyInventory = true;
@@ -88,20 +140,18 @@ public sealed class GoodsMetricProvider : IMetricProvider
                     }
                 }
             }
-            // One-shot: log the inventory count we're iterating, and what Log/Berry look like.
             if (!_loggedInventoryCount && goodId == "Log")
             {
                 _loggedInventoryCount = true;
-                int count = 0;
-                int nonEmpty = 0;
-                foreach (var inv in _districtInventoryRegistry.Inventories)
+                int count = 0, nonEmpty = 0;
+                foreach (var inv in EnumerateInventories())
                 {
                     count++;
                     try { if (inv.AmountInStock("Log") > 0) nonEmpty++; } catch { }
                 }
-                Debug.Log($"[Graphs] goods diag: {count} inventories total, {nonEmpty} hold Log; current Log sum={total}");
+                Debug.Log($"[Graphs] goods diag: {count} inventories via reflection, {nonEmpty} hold Log; Log sum={total}");
             }
-            return total;
+            return anyInventory ? total : float.NaN;
         }
         catch (Exception ex)
         {
