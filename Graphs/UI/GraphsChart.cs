@@ -159,10 +159,16 @@ public sealed class GraphsChart
         if (len < 0.0001f) return;
         Vector2 normal = new Vector2(-dir.y, dir.x) / len * thickness * 0.5f;
 
-        Vector3 v0 = new(a.x + normal.x, a.y + normal.y, Vertex.nearZ);
-        Vector3 v1 = new(b.x + normal.x, b.y + normal.y, Vertex.nearZ);
-        Vector3 v2 = new(b.x - normal.x, b.y - normal.y, Vertex.nearZ);
-        Vector3 v3 = new(a.x - normal.x, a.y - normal.y, Vertex.nearZ);
+        // Order vertices so the winding matches FillRect (clockwise in
+        // screen-space with y-down), otherwise UIToolkit culls the quad.
+        //   v0 = a - normal   (one side of a)
+        //   v1 = b - normal   (same side of b)
+        //   v2 = b + normal   (opposite side of b)
+        //   v3 = a + normal   (opposite side of a)
+        Vector3 v0 = new(a.x - normal.x, a.y - normal.y, Vertex.nearZ);
+        Vector3 v1 = new(b.x - normal.x, b.y - normal.y, Vertex.nearZ);
+        Vector3 v2 = new(b.x + normal.x, b.y + normal.y, Vertex.nearZ);
+        Vector3 v3 = new(a.x + normal.x, a.y + normal.y, Vertex.nearZ);
 
         var mesh = ctx.Allocate(4, 6);
         mesh.SetNextVertex(new Vertex { position = v0, tint = color });
