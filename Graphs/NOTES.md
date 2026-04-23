@@ -120,7 +120,7 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 
 ## Lifecycle / DI
 
-- `Timberborn.SingletonSystem.ITickableSingleton` — `Tick()` called every game tick. Use for sampling at the tick rate.
+- `Timberborn.TickSystem.ITickableSingleton` — `Tick()` called every game tick. Use for sampling at the tick rate. (Note: lives in `TickSystem`, NOT `SingletonSystem`.)
 - `Timberborn.SingletonSystem.ILoadableSingleton` — `Load()` called once after DI wiring. Use for `EventBus.Register(this)`.
 - `Timberborn.SingletonSystem.IPostLoadableSingleton` — `PostLoad()` after all `Load()` calls; use if we need to read save-game-populated state.
 - `Timberborn.SingletonSystem.ISaveableSingleton` + `ISingletonLoader` / `ISingletonSaver` — for persisting mod data across saves.
