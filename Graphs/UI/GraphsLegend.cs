@@ -49,6 +49,7 @@ public sealed class GraphsLegend
         ApplyDefaultsIfNeeded();
 
         var scroll = new ScrollView(ScrollViewMode.Vertical);
+        scroll.AddToClassList("game-scroll-view");
         scroll.style.flexGrow = 1;
 
         foreach (var categoryGroup in _registry.Metrics
@@ -229,6 +230,7 @@ public sealed class GraphsLegend
         row.Add(swatch);
 
         var toggle = new Toggle { value = VisibleMetricIds.Contains(def.Id) };
+        toggle.AddToClassList("game-toggle");
         toggle.style.marginRight = 4;
         toggle.RegisterValueChangedCallback(evt =>
         {

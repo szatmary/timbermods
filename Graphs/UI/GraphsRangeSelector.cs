@@ -48,28 +48,19 @@ public sealed class GraphsRangeSelector
 
     private static void StyleButton(Button btn, bool selected)
     {
-        btn.style.width = 96;
-        btn.style.height = 28;
+        if (!btn.ClassListContains("button-game"))
+            btn.AddToClassList("button-game");
+
+        // Game USS handles background, border, hover state. We only toggle the
+        // active indicator via .button-active (a class the USS also styles).
+        if (selected && !btn.ClassListContains("button-active"))
+            btn.AddToClassList("button-active");
+        else if (!selected && btn.ClassListContains("button-active"))
+            btn.RemoveFromClassList("button-active");
+
+        btn.style.minWidth = 96;
         btn.style.marginLeft = 2;
         btn.style.marginRight = 2;
-        btn.style.paddingTop = 0;
-        btn.style.paddingBottom = 0;
-        btn.style.borderTopWidth = 1;
-        btn.style.borderBottomWidth = 1;
-        btn.style.borderLeftWidth = 1;
-        btn.style.borderRightWidth = 1;
-        var border = new StyleColor(Border);
-        btn.style.borderTopColor = border;
-        btn.style.borderBottomColor = border;
-        btn.style.borderLeftColor = border;
-        btn.style.borderRightColor = border;
-        btn.style.borderTopLeftRadius = 3;
-        btn.style.borderTopRightRadius = 3;
-        btn.style.borderBottomLeftRadius = 3;
-        btn.style.borderBottomRightRadius = 3;
-        btn.style.backgroundColor = new StyleColor(selected ? SelectedBg : UnselectedBg);
-        btn.style.color = selected ? SelectedFg : UnselectedFg;
-        btn.style.unityFontStyleAndWeight = selected ? FontStyle.Bold : FontStyle.Normal;
     }
 
     public float? LookbackDays() => CurrentRange switch

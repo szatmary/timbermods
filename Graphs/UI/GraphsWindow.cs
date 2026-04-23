@@ -136,12 +136,10 @@ public sealed class GraphsWindow
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
-        var closeBtn = new Button(Close) { text = "×" };
-        closeBtn.style.width = 28;
-        closeBtn.style.height = 28;
-        closeBtn.style.fontSize = 18;
-        closeBtn.style.paddingTop = 0;
-        closeBtn.style.paddingBottom = 0;
+        // Native close-X: the game's own USS styles .button-cross as a
+        // crossed close button with the right sprite.
+        var closeBtn = new Button(Close);
+        closeBtn.AddToClassList("button-cross");
         titleBar.Add(closeBtn);
 
         panel.Add(titleBar);

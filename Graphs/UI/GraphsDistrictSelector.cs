@@ -28,6 +28,7 @@ public sealed class GraphsDistrictSelector
 
         var dropdown = new DropdownField("District", names,
             _filter.DistrictName is null ? 0 : System.Math.Max(0, names.IndexOf(_filter.DistrictName)));
+        dropdown.AddToClassList("game-dropdown");
         dropdown.style.marginBottom = 8;
         dropdown.RegisterValueChangedCallback(evt =>
         {
