@@ -40,14 +40,19 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 
 ## Inventory / goods
 
-- **Enumerating good ids**: `Timberborn.Goods.StorableGoodRegistry.Goods` (`get_Goods`). No `GoodSpecService` exists. `GoodsGroupSpecService` exists but exposes groups, not good ids. ⚠️ resolve at impl time: confirm that `StorableGoodRegistry.Goods` returns `IEnumerable<StorableGood>` (with `.Id`) vs `IEnumerable<GoodSpec>` — verify via LSP or by reading `<GoodAmount>` + `get_GoodId` shape.
+- **Enumerating good ids (confirmed)**: `Timberborn.Goods.IGoodService.Goods` returns `ReadOnlyList<string>` — strings directly, no spec unwrap needed. Impl is `Timberborn.Goods.GoodService`. Prefer the interface for DI. (`StorableGoodRegistry.Goods` exists too but is per-inventory and element type is `StorableGood` struct with `.GoodId` — the right enumeration for whole-settlement good ids is `IGoodService.Goods`.)
+- `IGoodService` also exposes `GetGood(id) -> GoodSpec`, `GetGoodOrNull`, `HasGood`, `GetGoodsForGroup`, `GetGoodsForType`.
+- `Timberborn.Goods.StorableGood` is a **struct** with `GoodId / Takeable / Givable` (not `Id`).
+- `Timberborn.Goods.GoodSpec` (a `ComponentSpec` blueprint type) has `Id`, `DisplayNameLocKey`, `DisplayName`, `Icon`, etc. — use this when you need a loc key for a good.
 - `Timberborn.InventorySystem.DistrictInventoryRegistry`
-  - `AllInventories` (`get_AllInventories`) — enumerable of `Inventory`.
-- `Timberborn.InventorySystem.Inventory` (component)
-  - `Stock` (`get_Stock`) — collection of `StorableGoodAmount` (from `Timberborn.InventorySystem`; see also `Timberborn.Goods.GoodAmount`).
-  - `AllowedGoods`, `Goods`, `Capacity`, `CapacityReservation`, `StockReservation`.
-  - Per-good stock amount: no direct `Stock.Get(id)`. The typical pattern is `inv.Stock` returns an enumerable of `(goodId, amount)` pairs — iterate and filter, or `inv.GetAmount(goodId)`-style. ⚠️ resolve at impl time: pick between iterating `Stock` vs a dedicated `GetAmount` helper; the probe shows `GetAmount` and `get_Amount` on stock entries.
-- `Timberborn.Goods.GoodAmount` / `Timberborn.InventorySystem.StorableGoodAmount` — pair of (good, amount).
+  - `Inventories` (`get_Inventories`) — `ReadOnlyHashSet<Inventory>`. (No `AllInventories` property — that was a template myth.)
+  - `ActiveInventoriesWithStock(string goodId)` / `ActiveInventoriesWithCapacity(string goodId)` — pre-filtered sets for one good (useful when scanning by good, not by inventory).
+- `Timberborn.InventorySystem.Inventory` (component, extends `BaseComponent`)
+  - `AmountInStock(string goodId) -> int` — **confirmed**; this is the per-good stock lookup. Also `UnreservedAmountInStock(goodId)`, `GoodCapacity(goodId)`, `ReservedCapacity(goodId)`.
+  - `Stock` (`get_Stock`) — `ReadOnlyList<?>` (enumeration of stored goods; use `AmountInStock` instead of iterating).
+  - `TotalAmountInStock`, `IsEmpty`, `IsFull`, `Capacity`, `AllowedGoods`.
+- Inventory -> owning district: `inventory.GetComponent<DistrictBuilding>()?.District?.DistrictName` (`DistrictBuilding` is a sibling `BaseComponent`; `District` returns a `DistrictCenter`, may be null before assignment).
+- `Timberborn.Goods.GoodAmount` — struct `(GoodId, Amount)`.
 
 ## Science
 
@@ -155,9 +160,13 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 
 ## Items deferred to impl time
 
-1. `StorableGoodRegistry.Goods` element type (`StorableGood` vs `GoodSpec`) — inspect via LSP.
-2. `Inventory.Stock` per-good lookup shape — iterate the enumerable and match `GoodId`, or use `GetAmount(goodId)` if it exists on `Inventory`.
-3. Detecting "beaver is injured" — no boolean; walk `Needs.AllNeeds` looking for the injury need id. Confirm the exact constant name/value at impl time (`InjuryNeedId` field found in `Timberborn.Healthcare`).
+1. Detecting "beaver is injured" — no boolean; walk `Needs.AllNeeds` looking for the injury need id. Confirm the exact constant name/value at impl time (`InjuryNeedId` field found in `Timberborn.Healthcare`).
+
+### Resolved during impl
+- Good enumeration: use `IGoodService.Goods` (ReadOnlyList\<string\>) — strings directly.
+- Per-inventory stock: `Inventory.AmountInStock(goodId)`.
+- Inventory -> district: `inventory.GetComponent<DistrictBuilding>()?.District?.DistrictName`.
+- `DistrictInventoryRegistry.Inventories` (not `AllInventories`).
 
 ## Deltas from the prior template
 
@@ -167,6 +176,7 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 - `Injurable.IsInjured` — **does not exist**. Replaced with "active need with injury id" pattern.
 - `ContaminationIncubator.IsIncubating` — confirmed.
 - `Wellbeing` component — **does not exist as bare `Wellbeing`**. The per-character component is `WellbeingTracker`; score is `WellbeingTracker.Wellbeing`.
-- `GoodSpecService` — **does not exist**. Use `StorableGoodRegistry.Goods` instead.
-- `inv.Stock.Get(id)` — no such API. Iterate `Stock` or use per-amount `GetAmount`.
+- `GoodSpecService` — **does not exist**. Use `IGoodService.Goods` (strings) for enumeration; `IGoodService.GetGood(id)` for the `GoodSpec` blueprint.
+- `inv.Stock.Get(id)` — no such API. Use `Inventory.AmountInStock(goodId)` for a single good; `Stock` is a `ReadOnlyList` for iteration.
+- `DistrictInventoryRegistry.AllInventories` — **does not exist**. Use `Inventories` (ReadOnlyHashSet\<Inventory\>).
 - `RootVisualElementProvider` — lives in `Timberborn.CoreUI.dll` but namespace is `Timberborn.RootProviders`.

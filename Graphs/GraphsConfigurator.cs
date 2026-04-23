@@ -20,5 +20,6 @@ public class GraphsConfigurator : Configurator
         // Providers (multibind as IMetricProvider)
         MultiBind<IMetricProvider>().To<ScienceMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<PopulationMetricProvider>().AsSingleton();
+        MultiBind<IMetricProvider>().To<GoodsMetricProvider>().AsSingleton();
     }
 }
