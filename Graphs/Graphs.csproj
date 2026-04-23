@@ -38,6 +38,9 @@
     <Reference Include="$(GameManagedDir)/UnityEngine.InputLegacyModule.dll">
       <Private>false</Private>
     </Reference>
+    <Reference Include="$(GameManagedDir)/Unity.InputSystem.dll">
+      <Private>false</Private>
+    </Reference>
     <Reference Include="0Harmony">
       <HintPath>$(HarmonyDir)/0Harmony.dll</HintPath>
       <Private>false</Private>
