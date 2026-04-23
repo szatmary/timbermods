@@ -65,6 +65,11 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton
         // last tick — we don't try to backfill missed slots (e.g. after game speed up).
         _lastSampleIndex = sampleIndex;
         TakeSample(partialDay);
+
+        // Diagnostic: log the first sample and then every 10 samples so we can
+        // confirm in Player.log how much data the buffer actually holds.
+        if (_history.Count == 1 || _history.Count % 10 == 0)
+            Debug.Log($"[Graphs] sampled {_history.Count} times; latest timestamp={partialDay:F3}");
     }
 
     private void TakeSample(float partialDay)

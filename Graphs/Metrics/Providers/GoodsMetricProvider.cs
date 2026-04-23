@@ -62,6 +62,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
     private float TotalStock(string goodId, string? districtName)
     {
         var total = 0;
+        var anySucceeded = false;
         try
         {
             // ActiveInventoriesWithStock returns only inventories that currently
@@ -77,6 +78,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
                         continue;
                     }
                     total += inventory.AmountInStock(goodId);
+                    anySucceeded = true;
                 }
                 catch (Exception ex)
                 {
@@ -87,6 +89,8 @@ public sealed class GoodsMetricProvider : IMetricProvider
                     }
                 }
             }
+            // If we exited the loop cleanly with no inventories, that's a real 0.
+            anySucceeded = true;
         }
         catch (Exception ex)
         {
@@ -96,7 +100,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
                 Debug.LogWarning($"[Graphs] goods enumeration failed: {ex}\n{ex.StackTrace}");
             }
         }
-        return total;
+        return anySucceeded ? total : float.NaN;
     }
 
     /// Resolve an inventory's owning district name, or null if it isn't assigned
