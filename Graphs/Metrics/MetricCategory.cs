@@ -5,6 +5,7 @@ public enum MetricCategory
 {
     Goods,
     Population,
+    Employment,
     Science,
     Wellbeing,
     Statistics,

@@ -9,6 +9,11 @@ public sealed class MetricDefinition
     public MetricCategory Category { get; }
     public MetricScope Scope { get; }
 
+    /// Optional sub-group within the category, used by the legend to cluster
+    /// related metrics (e.g. "Quarters" for homeless/beds inside Population).
+    /// Null = no sub-grouping.
+    public string? SubGroup { get; }
+
     /// <param name="districtName">
     /// Specific district name when the filter is set to one district, or
     /// null for "all districts" (settlement-wide aggregation).
@@ -20,12 +25,14 @@ public sealed class MetricDefinition
         string nameLocKey,
         MetricCategory category,
         MetricScope scope,
-        Func<string?, float> valueFn)
+        Func<string?, float> valueFn,
+        string? subGroup = null)
     {
         Id = id;
         NameLocKey = nameLocKey;
         Category = category;
         Scope = scope;
         ValueFn = valueFn;
+        SubGroup = subGroup;
     }
 }

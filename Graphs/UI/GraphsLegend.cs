@@ -118,10 +118,47 @@ public sealed class GraphsLegend
         if (category == MetricCategory.Goods)
             BuildGoodsGroups(section, metrics);
         else
-            foreach (var def in metrics)
-                section.Add(BuildRow(def));
+            BuildSubGroups(section, metrics);
 
         return section;
+    }
+
+    /// Generic sub-grouping: partitions metrics by their `SubGroup` string
+    /// and renders a small header per group. Metrics with no SubGroup fall
+    /// into a single unlabelled bucket at the top.
+    private void BuildSubGroups(VisualElement section, IEnumerable<MetricDefinition> metrics)
+    {
+        var groups = new List<(string? Name, List<MetricDefinition> Items)>();
+        var indexByName = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var def in metrics)
+        {
+            var name = def.SubGroup;
+            int idx;
+            if (name != null && indexByName.TryGetValue(name, out idx))
+            {
+                groups[idx].Items.Add(def);
+            }
+            else
+            {
+                groups.Add((name, new List<MetricDefinition> { def }));
+                if (name != null) indexByName[name] = groups.Count - 1;
+            }
+        }
+
+        foreach (var (name, items) in groups)
+        {
+            if (!string.IsNullOrEmpty(name))
+            {
+                var groupHeader = new Label(name!.ToUpperInvariant());
+                groupHeader.style.color = new Color(0.60f, 0.72f, 0.80f);
+                groupHeader.style.fontSize = 11;
+                groupHeader.style.marginTop = 4;
+                groupHeader.style.marginLeft = 4;
+                section.Add(groupHeader);
+            }
+            foreach (var def in items) section.Add(BuildRow(def));
+        }
     }
 
     private void BuildGoodsGroups(VisualElement section, IEnumerable<MetricDefinition> metrics)

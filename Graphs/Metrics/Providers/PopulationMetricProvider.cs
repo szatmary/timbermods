@@ -33,25 +33,40 @@ public sealed class PopulationMetricProvider : IMetricProvider
 
     public IEnumerable<MetricDefinition> GetMetrics()
     {
-        yield return FromData("pop.total", "Graphs.Metric.Total", d => d.TotalPopulation);
-        yield return FromData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults);
-        yield return FromData("pop.kits", "Graphs.Metric.Kits", d => d.NumberOfChildren);
-        yield return FromData("pop.bots", "Graphs.Metric.Bots", d => d.NumberOfBots);
-        yield return FromData("pop.homeless", "Graphs.Metric.Homeless", d => d.BedData.Homeless);
-        yield return FromData("pop.unemployed.beavers", "Graphs.Metric.UnemployedBeavers",
-            d => d.BeaverWorkplaceData.Unemployed);
-        yield return FromData("pop.unemployed.bots", "Graphs.Metric.UnemployedBots",
-            d => d.BotWorkplaceData.Unemployed);
-        yield return FromData("pop.jobs.beavers", "Graphs.Metric.BeaverJobs",
-            d => d.BeaverWorkplaceData.OccupiedWorkslots);
-        yield return FromData("pop.jobs.bots", "Graphs.Metric.BotJobs",
-            d => d.BotWorkplaceData.OccupiedWorkslots);
-        yield return FromData("pop.vacancies.beavers", "Graphs.Metric.BeaverVacancies",
-            d => d.BeaverWorkplaceData.FreeWorkslots);
-        yield return FromData("pop.vacancies.bots", "Graphs.Metric.BotVacancies",
-            d => d.BotWorkplaceData.FreeWorkslots);
+        // Totals
+        yield return FromData("pop.total",  "Graphs.Metric.Total",  d => d.TotalPopulation, "Population");
+        yield return FromData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults,   "Population");
+        yield return FromData("pop.kits",   "Graphs.Metric.Kits",   d => d.NumberOfChildren, "Population");
+        yield return FromData("pop.bots",   "Graphs.Metric.Bots",   d => d.NumberOfBots,     "Population");
+
+        // Quarters (beds)
+        yield return FromData("pop.homeless",      "Graphs.Metric.Homeless",     d => d.BedData.Homeless,     "Quarters");
+        yield return FromData("pop.beds.occupied", "Graphs.Metric.OccupiedBeds", d => d.BedData.OccupiedBeds, "Quarters");
+        yield return FromData("pop.beds.free",     "Graphs.Metric.FreeBeds",     d => d.BedData.FreeBeds,     "Quarters");
+
+        // Employment — its own top-level category
+        yield return InCategory(MetricCategory.Employment,
+            "emp.unemployed.beavers", "Graphs.Metric.UnemployedBeavers",
+            d => d.BeaverWorkplaceData.Unemployed, "Unemployed");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.unemployed.bots", "Graphs.Metric.UnemployedBots",
+            d => d.BotWorkplaceData.Unemployed, "Unemployed");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.jobs.beavers", "Graphs.Metric.BeaverJobs",
+            d => d.BeaverWorkplaceData.OccupiedWorkslots, "Jobs filled");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.jobs.bots", "Graphs.Metric.BotJobs",
+            d => d.BotWorkplaceData.OccupiedWorkslots, "Jobs filled");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.vacancies.beavers", "Graphs.Metric.BeaverVacancies",
+            d => d.BeaverWorkplaceData.FreeWorkslots, "Vacancies");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.vacancies.bots", "Graphs.Metric.BotVacancies",
+            d => d.BotWorkplaceData.FreeWorkslots, "Vacancies");
+
+        // Health
         yield return FromData("pop.contaminated", "Graphs.Metric.Contaminated",
-            d => d.ContaminationData.ContaminatedTotal);
+            d => d.ContaminationData.ContaminatedTotal, "Health");
 
         yield return new MetricDefinition(
             id: "pop.infected",
@@ -61,9 +76,16 @@ public sealed class PopulationMetricProvider : IMetricProvider
             valueFn: CountInfected);
     }
 
-    private MetricDefinition FromData(string id, string locKey, System.Func<PopulationData, int> extract) =>
+    private MetricDefinition FromData(
+        string id, string locKey, System.Func<PopulationData, int> extract, string? subGroup = null) =>
         new(id, locKey, MetricCategory.Population, MetricScope.District,
-            districtName => ExtractFor(districtName, extract));
+            districtName => ExtractFor(districtName, extract), subGroup);
+
+    private MetricDefinition InCategory(
+        MetricCategory category, string id, string locKey,
+        System.Func<PopulationData, int> extract, string? subGroup) =>
+        new(id, locKey, category, MetricScope.District,
+            districtName => ExtractFor(districtName, extract), subGroup);
 
     private float ExtractFor(string? districtName, System.Func<PopulationData, int> extract)
     {
