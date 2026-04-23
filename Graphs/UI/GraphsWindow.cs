@@ -104,63 +104,95 @@ public sealed class GraphsWindow
 
     private VisualElement Build()
     {
-        var root = new VisualElement { name = "graphs-window" };
-        root.style.position = Position.Absolute;
-        root.style.left = 0; root.style.right = 0; root.style.top = 0; root.style.bottom = 0;
-        root.style.backgroundColor = new StyleColor(new Color(0.08f, 0.08f, 0.10f, 0.96f));
+        // Full-screen semi-transparent backdrop (like other game modals) with
+        // the actual dialog panel centered inside it.
+        var backdrop = new VisualElement { name = "graphs-backdrop" };
+        backdrop.style.position = Position.Absolute;
+        backdrop.style.left = 0; backdrop.style.right = 0;
+        backdrop.style.top = 0; backdrop.style.bottom = 0;
+        backdrop.style.backgroundColor = new StyleColor(new Color(0, 0, 0, 0.55f));
+        backdrop.style.justifyContent = Justify.Center;
+        backdrop.style.alignItems = Align.Center;
+
+        // The dialog itself — bordered, with margin off the screen edges.
+        var panel = new VisualElement { name = "graphs-panel" };
+        panel.style.width = new Length(92, LengthUnit.Percent);
+        panel.style.height = new Length(88, LengthUnit.Percent);
+        panel.style.maxWidth = 1800;
+        panel.style.maxHeight = 1200;
+        panel.style.backgroundColor = new StyleColor(new Color(0.11f, 0.10f, 0.09f, 0.98f));
+        panel.style.borderTopWidth = 2;
+        panel.style.borderBottomWidth = 2;
+        panel.style.borderLeftWidth = 2;
+        panel.style.borderRightWidth = 2;
+        var borderColor = new StyleColor(new Color(0.58f, 0.44f, 0.24f));
+        panel.style.borderTopColor = borderColor;
+        panel.style.borderBottomColor = borderColor;
+        panel.style.borderLeftColor = borderColor;
+        panel.style.borderRightColor = borderColor;
+        panel.style.borderTopLeftRadius = 4;
+        panel.style.borderTopRightRadius = 4;
+        panel.style.borderBottomLeftRadius = 4;
+        panel.style.borderBottomRightRadius = 4;
+        backdrop.Add(panel);
 
         var titleBar = new VisualElement { name = "graphs-title" };
-        titleBar.style.height = 44;
+        titleBar.style.height = 40;
         titleBar.style.flexDirection = FlexDirection.Row;
         titleBar.style.justifyContent = Justify.SpaceBetween;
         titleBar.style.alignItems = Align.Center;
-        titleBar.style.paddingLeft = 16;
-        titleBar.style.paddingRight = 8;
-        titleBar.style.backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.18f));
+        titleBar.style.paddingLeft = 14;
+        titleBar.style.paddingRight = 6;
+        titleBar.style.backgroundColor = new StyleColor(new Color(0.18f, 0.15f, 0.12f));
+        titleBar.style.borderBottomWidth = 1;
+        titleBar.style.borderBottomColor = borderColor;
 
         var title = new Label("Graphs");
-        title.style.color = Color.white;
-        title.style.fontSize = 20;
+        title.style.color = new Color(0.96f, 0.86f, 0.62f);
+        title.style.fontSize = 18;
+        title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
         var closeBtn = NativeUi.CreateNineSliceButton("×", Close);
-        closeBtn.style.width = 32;
-        closeBtn.style.height = 32;
+        closeBtn.style.width = 30;
+        closeBtn.style.height = 30;
         closeBtn.style.fontSize = 20;
         titleBar.Add(closeBtn);
 
-        root.Add(titleBar);
+        panel.Add(titleBar);
 
         var body = new VisualElement { name = "graphs-body" };
         body.style.flexGrow = 1;
         body.style.flexDirection = FlexDirection.Row;
-        root.Add(body);
+        panel.Add(body);
 
         var chartSlot = new VisualElement { name = "graphs-chart-slot" };
         chartSlot.style.flexGrow = 1;
-        chartSlot.style.marginLeft = 12;
-        chartSlot.style.marginTop = 12;
-        chartSlot.style.marginBottom = 12;
+        chartSlot.style.marginLeft = 10;
+        chartSlot.style.marginTop = 10;
+        chartSlot.style.marginBottom = 10;
         chartSlot.Add(_chart.Build());
         body.Add(chartSlot);
 
         var legendSlot = new VisualElement { name = "graphs-legend-slot" };
-        legendSlot.style.width = 320;
-        legendSlot.style.marginRight = 8;
-        legendSlot.style.marginTop = 12;
-        legendSlot.style.marginBottom = 12;
+        legendSlot.style.width = 300;
+        legendSlot.style.marginRight = 10;
+        legendSlot.style.marginTop = 10;
+        legendSlot.style.marginBottom = 10;
         legendSlot.Add(_districtSelector.Build());
         legendSlot.Add(_legend.Build());
         body.Add(legendSlot);
 
         var bottom = new VisualElement { name = "graphs-bottom" };
-        bottom.style.height = 48;
+        bottom.style.height = 44;
         bottom.style.flexDirection = FlexDirection.Row;
         bottom.style.justifyContent = Justify.Center;
         bottom.style.alignItems = Align.Center;
+        bottom.style.borderTopWidth = 1;
+        bottom.style.borderTopColor = borderColor;
         bottom.Add(_rangeSelector.Build());
-        root.Add(bottom);
+        panel.Add(bottom);
 
-        return root;
+        return backdrop;
     }
 }
