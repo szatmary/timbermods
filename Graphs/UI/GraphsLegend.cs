@@ -134,6 +134,10 @@ public sealed class GraphsLegend
             {
                 var goodId = def.Id.Substring("good.".Length);
                 try { groupId = _goodService.GetGood(goodId)?.GoodGroupId; } catch { }
+
+                // Merge water-family goods so Water and Badwater sit together.
+                if (goodId == "Water" || goodId == "Badwater")
+                    groupId = "Water";
             }
             if (string.IsNullOrEmpty(groupId))
             {

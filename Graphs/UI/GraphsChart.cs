@@ -95,27 +95,25 @@ public sealed class GraphsChart
         int sampleCount = endIdx - startIdx;
         if (sampleCount < 1) return;
 
-        // Pass 1: compute per-category min/max across every visible metric
-        // in the category, so all lines in one category share a y-scale.
-        var categoryRanges = new Dictionary<MetricCategory, (float Min, float Max)>();
+        // Pass 1: compute per-category max across every visible metric in the
+        // category. Min is pinned to 0 so y=0 always represents "no stock /
+        // no beavers / no hunger satisfaction" — a log count of 100 sits half
+        // way up when the category's max is 200.
+        var categoryMax = new Dictionary<MetricCategory, float>();
         var metrics = _registry.Metrics;
         for (int m = 0; m < metrics.Count; m++)
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
 
-            categoryRanges.TryGetValue(def.Category, out var cur);
-            if (cur.Min == 0 && cur.Max == 0 && !categoryRanges.ContainsKey(def.Category))
-                cur = (float.PositiveInfinity, float.NegativeInfinity);
-
+            categoryMax.TryGetValue(def.Category, out var cur);
             for (int i = startIdx; i < endIdx; i++)
             {
                 float v = history.ReadValue(i, m);
                 if (float.IsNaN(v)) continue;
-                if (v < cur.Min) cur = (v, cur.Max);
-                if (v > cur.Max) cur = (cur.Min, v);
+                if (v > cur) cur = v;
             }
-            categoryRanges[def.Category] = cur;
+            categoryMax[def.Category] = cur;
         }
 
         // Inset the y-axis slightly so lines at min/max values aren't
@@ -130,10 +128,8 @@ public sealed class GraphsChart
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
-            if (!categoryRanges.TryGetValue(def.Category, out var catRange)) continue;
-            if (float.IsInfinity(catRange.Min) || float.IsInfinity(catRange.Max)) continue;
+            if (!categoryMax.TryGetValue(def.Category, out var catMax)) continue;
 
-            float range = catRange.Max - catRange.Min;
             Color color = GraphColors.ColorFor(def.Id, def.Category);
 
             if (_loggedMetrics.Add(def.Id))
@@ -141,7 +137,7 @@ public sealed class GraphsChart
                 int nanCount = 0;
                 for (int i = startIdx; i < endIdx; i++)
                     if (float.IsNaN(history.ReadValue(i, m))) nanCount++;
-                Debug.Log($"[Graphs] drawing '{def.Id}': category={def.Category} catMin={catRange.Min} catMax={catRange.Max} nan={nanCount}/{sampleCount}");
+                Debug.Log($"[Graphs] drawing '{def.Id}': category={def.Category} catMax={catMax} nan={nanCount}/{sampleCount}");
             }
 
             bool havePrev = false;
@@ -152,7 +148,10 @@ public sealed class GraphsChart
                 if (float.IsNaN(v)) { havePrev = false; continue; }
                 float t = history.ReadTimestamp(i);
                 float x = rect.x + ((t - startT) / span) * rect.width;
-                float norm = range > 0 ? (v - catRange.Min) / range : 0.5f;
+                // 0 always anchors to the bottom of the chart; catMax to the
+                // top. A value of catMax/2 lands halfway up regardless of what
+                // other metrics in the category are doing.
+                float norm = catMax > 0 ? v / catMax : 0f;
                 float y = innerBottom - norm * innerHeight;
 
                 FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
