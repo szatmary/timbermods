@@ -135,9 +135,10 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 
 ## UI
 
-- `Timberborn.RootProviders.RootVisualElementProvider` (namespace is `Timberborn.RootProviders`, not `Timberborn.CoreUI` — the type lives in `Timberborn.CoreUI.dll` but its namespace is `RootProviders`).
-  - Field/property: `rootVisualElement` (`get_rootVisualElement`) — the `UnityEngine.UIElements.VisualElement` panel root.
-- Append / remove pattern: resolve `RootVisualElementProvider` via DI, then `provider.rootVisualElement.Add(myGraphPanel)` on open and `Remove(myGraphPanel)` on close. No dedicated API — just standard UIElements hierarchy manipulation.
+- `Timberborn.RootProviders.RootVisualElementProvider` (type lives in `Timberborn.CoreUI.dll`, namespace is `Timberborn.RootProviders`).
+  - **No `rootVisualElement` member.** The earlier `get_rootVisualElement` seen in string probes comes from Unity's `UIDocument`, not this provider.
+  - Real API: `CreateEmpty(string name, int sortOrder) -> UIDocument`. Also `Create(GameObject parent, string sourceAssetPath, int sortOrder, string panelSettingsPath)`.
+- Open/close pattern: `var doc = provider.CreateEmpty("my-panel", sortOrder);`, then `doc.rootVisualElement.Add(myPanel)`. To close: `myPanel.RemoveFromHierarchy();` **and** `UnityEngine.Object.Destroy(doc.gameObject);` — otherwise the UIDocument host leaks per open.
 - Helpers available: `Timberborn.CoreUI.VisualElementInitializer` (auto-wires child controls), `VisualElementLoader` (loads `.uxml`), `VisualElementExtensions`.
 - Dialog / modal helpers: `DialogBoxShower`, `PanelStack` (not needed for our embedded panel).
 
