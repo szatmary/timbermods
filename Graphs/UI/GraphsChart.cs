@@ -83,7 +83,7 @@ public sealed class GraphsChart
         float span = endT - startT;
         if (span <= 0) return;
         int sampleCount = endIdx - startIdx;
-        if (sampleCount < 2) return;
+        if (sampleCount < 1) return;
 
         var metrics = _registry.Metrics;
         for (int m = 0; m < metrics.Count; m++)
@@ -111,12 +111,18 @@ public sealed class GraphsChart
                 float v = history.ReadValue(i, m);
                 if (float.IsNaN(v)) { havePrev = false; continue; }
                 float t = history.ReadTimestamp(i);
-                float x = rect.x + ((t - startT) / span) * rect.width;
+                // When span is 0 (single sample) pin to right edge.
+                float x = span > 0 ? rect.x + ((t - startT) / span) * rect.width : rect.xMax - 4;
                 float norm = range > 0 ? (v - min) / range : 0.5f;
                 float y = rect.y + rect.height - norm * rect.height;
 
                 if (havePrev)
                     DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 2f);
+                else
+                    // Draw a small dot at the first point so a single-sample metric
+                    // is still visible (otherwise a fresh game shows a blank chart
+                    // until the second hourly sample arrives).
+                    FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
                 prev = new Vector2(x, y);
                 havePrev = true;
             }
