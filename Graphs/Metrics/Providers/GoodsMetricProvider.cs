@@ -64,6 +64,8 @@ public sealed class GoodsMetricProvider : IMetricProvider
     private static PropertyInfo? _innerInventoriesProp;
     private static bool _reflectionResolved;
 
+    private static FieldInfo? _inventoriesField;
+
     private IEnumerable<Inventory> EnumerateInventories()
     {
         if (!_reflectionResolved)
@@ -72,24 +74,23 @@ public sealed class GoodsMetricProvider : IMetricProvider
             try
             {
                 var regType = _districtInventoryRegistry.GetType();
-                _publicInventoryRegistryField = regType.GetField(
-                    "_publicInventoryRegistry",
+                // Dump ALL fields of DistrictInventoryRegistry once so we can see
+                // which one actually holds the set of inventories.
+                foreach (var field in regType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+                {
+                    object? val = null;
+                    try { val = field.GetValue(_districtInventoryRegistry); } catch { }
+                    int count = -1;
+                    if (val is System.Collections.ICollection coll) count = coll.Count;
+                    else if (val is System.Collections.IEnumerable)
+                    {
+                        count = 0;
+                        try { foreach (var _ in (System.Collections.IEnumerable)val) count++; } catch { count = -2; }
+                    }
+                    Debug.Log($"[Graphs] DistrictInventoryRegistry field '{field.Name}' type={field.FieldType.Name} count={count}");
+                }
+                _inventoriesField = regType.GetField("_inventories",
                     BindingFlags.NonPublic | BindingFlags.Instance);
-                var innerType = _publicInventoryRegistryField?.FieldType
-                    ?? typeof(Inventory).Assembly.GetType("Timberborn.InventorySystem.InventoryRegistry");
-                _innerInventoriesProp = innerType?.GetProperty(
-                    "Inventories",
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? innerType?.GetProperty(
-                        "AllInventories",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? innerType?.GetProperty(
-                        "EnabledInventories",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-                Debug.Log(
-                    $"[Graphs] reflection: publicInventoryRegistryField={_publicInventoryRegistryField != null} "
-                    + $"innerProp={_innerInventoriesProp?.Name}");
             }
             catch (Exception ex)
             {
@@ -97,17 +98,10 @@ public sealed class GoodsMetricProvider : IMetricProvider
             }
         }
 
-        if (_publicInventoryRegistryField == null || _innerInventoriesProp == null)
-            return Enumerable.Empty<Inventory>();
-
-        var inner = _publicInventoryRegistryField.GetValue(_districtInventoryRegistry);
-        if (inner == null) return Enumerable.Empty<Inventory>();
-
-        if (_innerInventoriesProp.GetValue(inner) is IEnumerable<Inventory> typed)
-            return typed;
-        if (_innerInventoriesProp.GetValue(inner) is System.Collections.IEnumerable raw)
-            return raw.Cast<Inventory>();
-
+        if (_inventoriesField == null) return Enumerable.Empty<Inventory>();
+        var val2 = _inventoriesField.GetValue(_districtInventoryRegistry);
+        if (val2 is IEnumerable<Inventory> typed) return typed;
+        if (val2 is System.Collections.IEnumerable raw) return raw.Cast<Inventory>();
         return Enumerable.Empty<Inventory>();
     }
 

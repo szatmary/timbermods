@@ -151,32 +151,31 @@ public sealed class GraphsChart
         }
     }
 
+    /// Draw a line segment as a chain of overlapping axis-aligned rects.
+    /// The rotated-quad mesh approach via `ctx.Allocate(4, 6)` was unreliable
+    /// in Timberborn's UIToolkit pipeline — FillRect with axis-aligned geometry
+    /// always renders, so we subdivide the segment and paint small stamps.
     private static void DrawSegment(
         MeshGenerationContext ctx, Vector2 a, Vector2 b, Color color, float thickness)
     {
-        Vector2 dir = b - a;
-        float len = dir.magnitude;
+        Vector2 delta = b - a;
+        float len = delta.magnitude;
         if (len < 0.0001f) return;
-        Vector2 normal = new Vector2(-dir.y, dir.x) / len * thickness * 0.5f;
 
-        // Order vertices so the winding matches FillRect (clockwise in
-        // screen-space with y-down), otherwise UIToolkit culls the quad.
-        //   v0 = a - normal   (one side of a)
-        //   v1 = b - normal   (same side of b)
-        //   v2 = b + normal   (opposite side of b)
-        //   v3 = a + normal   (opposite side of a)
-        Vector3 v0 = new(a.x - normal.x, a.y - normal.y, Vertex.nearZ);
-        Vector3 v1 = new(b.x - normal.x, b.y - normal.y, Vertex.nearZ);
-        Vector3 v2 = new(b.x + normal.x, b.y + normal.y, Vertex.nearZ);
-        Vector3 v3 = new(a.x + normal.x, a.y + normal.y, Vertex.nearZ);
+        // Stamp every ~1.5 pixels along the path — dense enough that a 3px
+        // stamp always overlaps with neighbors even on diagonal lines.
+        float step = 1.5f;
+        int steps = (int)(len / step);
+        if (steps < 1) steps = 1;
+        float half = thickness * 0.5f;
 
-        var mesh = ctx.Allocate(4, 6);
-        mesh.SetNextVertex(new Vertex { position = v0, tint = color });
-        mesh.SetNextVertex(new Vertex { position = v1, tint = color });
-        mesh.SetNextVertex(new Vertex { position = v2, tint = color });
-        mesh.SetNextVertex(new Vertex { position = v3, tint = color });
-        mesh.SetNextIndex(0); mesh.SetNextIndex(1); mesh.SetNextIndex(2);
-        mesh.SetNextIndex(0); mesh.SetNextIndex(2); mesh.SetNextIndex(3);
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = i / (float)steps;
+            float x = a.x + delta.x * t;
+            float y = a.y + delta.y * t;
+            FillRect(ctx, new Rect(x - half, y - half, thickness, thickness), color);
+        }
     }
 
     private static void DrawWeatherBands(
