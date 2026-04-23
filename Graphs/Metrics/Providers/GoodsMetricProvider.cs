@@ -64,7 +64,10 @@ public sealed class GoodsMetricProvider : IMetricProvider
         var total = 0;
         try
         {
-            foreach (var inventory in _districtInventoryRegistry.Inventories)
+            // ActiveInventoriesWithStock returns only inventories that currently
+            // hold any amount of this good — avoids iterating the full settlement
+            // inventory list and any NRE paths there.
+            foreach (var inventory in _districtInventoryRegistry.ActiveInventoriesWithStock(goodId))
             {
                 if (inventory == null) continue;
                 try
@@ -80,7 +83,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
                     if (!_loggedStockDiagnostic)
                     {
                         _loggedStockDiagnostic = true;
-                        Debug.LogWarning($"[Graphs] inventory stock probe failed for '{goodId}': {ex}");
+                        Debug.LogWarning($"[Graphs] inventory stock probe failed for '{goodId}': {ex}\n{ex.StackTrace}");
                     }
                 }
             }
@@ -90,7 +93,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
             if (!_loggedStockDiagnostic)
             {
                 _loggedStockDiagnostic = true;
-                Debug.LogWarning($"[Graphs] goods enumeration failed: {ex}");
+                Debug.LogWarning($"[Graphs] goods enumeration failed: {ex}\n{ex.StackTrace}");
             }
         }
         return total;
