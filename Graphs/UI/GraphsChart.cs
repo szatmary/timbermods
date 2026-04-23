@@ -116,11 +116,11 @@ public sealed class GraphsChart
             categoryMax[def.Category] = cur;
         }
 
-        // Inset the y-axis slightly so lines at min/max values aren't
-        // clipped against the chart edges.
-        const float yMargin = 6f;
-        float innerTop = rect.y + yMargin;
-        float innerBottom = rect.y + rect.height - yMargin;
+        // Top gets a small inset so a value at catMax isn't clipped.
+        // Bottom stays flush so y=0 always sits at the real chart bottom.
+        const float topInset = 6f;
+        float innerTop = rect.y + topInset;
+        float innerBottom = rect.y + rect.height;
         float innerHeight = innerBottom - innerTop;
 
         // Pass 2: draw each visible metric using its category's shared scale.
