@@ -52,10 +52,13 @@ public sealed class GraphsChart
         if (history.Count == 0) return;
 
         float latestTimestamp = history.ReadTimestamp(history.Count - 1);
+        float earliestTimestamp = history.ReadTimestamp(0);
         float? lookback = _range.LookbackDays();
+        // When the buffer holds less data than the requested lookback, auto-zoom
+        // to what we have instead of cramming it at the right edge.
         float startTimestamp = lookback.HasValue
-            ? latestTimestamp - lookback.Value
-            : history.ReadTimestamp(0);
+            ? System.Math.Max(latestTimestamp - lookback.Value, earliestTimestamp)
+            : earliestTimestamp;
 
         int startIdx = history.FindFirstAtOrAfter(startTimestamp);
         int endIdx = history.Count;
