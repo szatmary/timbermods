@@ -4,34 +4,29 @@ using System.Linq;
 using System.Reflection;
 using Timberborn.GameDistricts;
 using Timberborn.Goods;
-using Timberborn.InventorySystem;
+using Timberborn.ResourceCountingSystem;
 using UnityEngine;
 
 namespace Graphs.Metrics.Providers;
 
-/// Registers one metric per good id discovered at load. Values are summed stock
-/// totals across every inventory (settlement-wide) or within the currently
-/// selected district (when the filter names one).
-///
-/// Good enumeration: `IGoodService.Goods` returns a `ReadOnlyList<string>` of good
-/// ids — the service already exposes them as strings, no need to unwrap specs.
-/// Per-inventory stock: `Inventory.AmountInStock(goodId)` returns the current int
-/// total for that good (respects the inventory's allowed-goods set).
-/// Inventory -> district: `inventory.GetComponent<DistrictBuilding>().District`
-/// gives the owning `DistrictCenter`. Inventories without a DistrictBuilding
-/// (or assigned to no district) are treated as unassigned and skipped when the
-/// filter is narrowed to a specific district.
+/// Registers one metric per good id. Uses the game's own
+/// `ResourceCountingService` which aggregates stock across every source
+/// (stockpiles, carried goods, output buffers, ground piles) — the same
+/// total the game's top-bar resource widgets show.
 public sealed class GoodsMetricProvider : IMetricProvider
 {
     private readonly IGoodService _goodService;
-    private readonly DistrictInventoryRegistry _districtInventoryRegistry;
+    private readonly ResourceCountingService _resourceCounting;
+    private readonly DistrictCenterRegistry _districts;
 
     public GoodsMetricProvider(
         IGoodService goodService,
-        DistrictInventoryRegistry districtInventoryRegistry)
+        ResourceCountingService resourceCounting,
+        DistrictCenterRegistry districts)
     {
         _goodService = goodService;
-        _districtInventoryRegistry = districtInventoryRegistry;
+        _resourceCounting = resourceCounting;
+        _districts = districts;
     }
 
     public IEnumerable<MetricDefinition> GetMetrics()
@@ -42,8 +37,6 @@ public sealed class GoodsMetricProvider : IMetricProvider
 
         foreach (var goodId in goodIds)
         {
-            // Capture for closure — loop variable reuse would alias all metrics
-            // to the last id otherwise.
             var captured = goodId;
             yield return new MetricDefinition(
                 id: $"good.{captured}",
@@ -54,115 +47,67 @@ public sealed class GoodsMetricProvider : IMetricProvider
         }
     }
 
-    private static bool _loggedStockDiagnostic;
-    private static bool _loggedInventoryCount;
+    private static bool _loggedDiag;
+    private static PropertyInfo? _allStockProp;
 
-    // Reflection-resolved access to the game-internal InventoryRegistry,
-    // which is the settlement-wide inventory set (DistrictInventoryRegistry
-    // is a wrapper whose `Inventories` getter throws NRE in our context).
-    private static FieldInfo? _publicInventoryRegistryField;
-    private static PropertyInfo? _innerInventoriesProp;
-    private static bool _reflectionResolved;
-
-    private static FieldInfo? _inventoriesField;
-
-    private IEnumerable<Inventory> EnumerateInventories()
-    {
-        if (!_reflectionResolved)
-        {
-            _reflectionResolved = true;
-            try
-            {
-                var regType = _districtInventoryRegistry.GetType();
-                // Dump ALL fields of DistrictInventoryRegistry once so we can see
-                // which one actually holds the set of inventories.
-                foreach (var field in regType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
-                {
-                    object? val = null;
-                    try { val = field.GetValue(_districtInventoryRegistry); } catch { }
-                    int count = -1;
-                    if (val is System.Collections.ICollection coll) count = coll.Count;
-                    else if (val is System.Collections.IEnumerable)
-                    {
-                        count = 0;
-                        try { foreach (var _ in (System.Collections.IEnumerable)val) count++; } catch { count = -2; }
-                    }
-                    Debug.Log($"[Graphs] DistrictInventoryRegistry field '{field.Name}' type={field.FieldType.Name} count={count}");
-                }
-                _inventoriesField = regType.GetField("_inventories",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[Graphs] reflection setup failed: {ex.Message}");
-            }
-        }
-
-        if (_inventoriesField == null) return Enumerable.Empty<Inventory>();
-        var val2 = _inventoriesField.GetValue(_districtInventoryRegistry);
-        if (val2 is IEnumerable<Inventory> typed) return typed;
-        if (val2 is System.Collections.IEnumerable raw) return raw.Cast<Inventory>();
-        return Enumerable.Empty<Inventory>();
-    }
-
-    /// Sum `goodId` stock across inventories that pass the district filter.
-    /// A null `districtName` means settlement-wide: every inventory counts.
     private float TotalStock(string goodId, string? districtName)
     {
-        var total = 0;
-        var anyInventory = false;
         try
         {
-            foreach (var inventory in EnumerateInventories())
+            if (districtName is null)
             {
-                if (inventory == null) continue;
-                anyInventory = true;
-                try
+                var rc = _resourceCounting.GetGlobalResourceCount(goodId);
+                int total = ExtractAllStock(rc);
+                if (!_loggedDiag && goodId == "Log")
                 {
-                    if (districtName != null && GetDistrictName(inventory) != districtName)
-                    {
-                        continue;
-                    }
-                    total += inventory.AmountInStock(goodId);
+                    _loggedDiag = true;
+                    Debug.Log($"[Graphs] ResourceCount Log global = {total} (type: {rc.GetType().Name})");
                 }
-                catch (Exception ex)
-                {
-                    if (!_loggedStockDiagnostic)
-                    {
-                        _loggedStockDiagnostic = true;
-                        Debug.LogWarning($"[Graphs] inventory stock probe failed for '{goodId}': {ex}\n{ex.StackTrace}");
-                    }
-                }
+                return total;
             }
-            if (!_loggedInventoryCount && goodId == "Log")
+
+            int sum = 0;
+            foreach (var d in _districts.FinishedDistrictCenters)
             {
-                _loggedInventoryCount = true;
-                int count = 0, nonEmpty = 0;
-                foreach (var inv in EnumerateInventories())
-                {
-                    count++;
-                    try { if (inv.AmountInStock("Log") > 0) nonEmpty++; } catch { }
-                }
-                Debug.Log($"[Graphs] goods diag: {count} inventories via reflection, {nonEmpty} hold Log; Log sum={total}");
+                if (d.DistrictName != districtName) continue;
+                var counter = _resourceCounting.GetDistrictResourceCounter(d);
+                var rc = counter.GetResourceCount(goodId);
+                sum += ExtractAllStock(rc);
             }
-            return anyInventory ? total : float.NaN;
+            return sum;
         }
         catch (Exception ex)
         {
-            if (!_loggedStockDiagnostic)
+            if (!_loggedDiag)
             {
-                _loggedStockDiagnostic = true;
-                Debug.LogWarning($"[Graphs] goods enumeration failed: {ex}\n{ex.StackTrace}");
+                _loggedDiag = true;
+                Debug.LogWarning($"[Graphs] ResourceCounting lookup failed for '{goodId}': {ex}\n{ex.StackTrace}");
             }
-            return anyInventory ? total : float.NaN;
+            return float.NaN;
         }
     }
 
-    /// Resolve an inventory's owning district name, or null if it isn't assigned
-    /// to one (e.g. stockpiles with no district center yet).
-    private static string? GetDistrictName(Inventory inventory)
+    /// `ResourceCount` is a struct with `AllStock` etc. Resolve the property
+    /// once via reflection so this compiles without binding to an exact shape
+    /// (property name could shift across game versions).
+    private static int ExtractAllStock(ResourceCount rc)
     {
-        var districtBuilding = inventory.GetComponent<DistrictBuilding>();
-        return districtBuilding?.District?.DistrictName;
+        if (_allStockProp == null)
+        {
+            var type = typeof(ResourceCount);
+            _allStockProp = type.GetProperty("AllStock")
+                        ?? type.GetProperty("Stock")
+                        ?? type.GetProperty("Amount");
+        }
+        if (_allStockProp == null) return 0;
+        object? boxed = rc;
+        var value = _allStockProp.GetValue(boxed);
+        return value switch
+        {
+            int i => i,
+            long l => (int)l,
+            float f => (int)f,
+            _ => 0,
+        };
     }
 }
