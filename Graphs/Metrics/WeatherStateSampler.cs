@@ -1,4 +1,5 @@
 using System;
+using Timberborn.GameCycleSystem;
 using Timberborn.HazardousWeatherSystem;
 using Timberborn.WeatherSystem;
 using UnityEngine;
@@ -13,13 +14,16 @@ public sealed class WeatherStateSampler
 {
     private readonly HazardousWeatherService _hazardous;
     private readonly WeatherService _weather;
+    private readonly GameCycleService _cycle;
 
     public WeatherStateSampler(
         HazardousWeatherService hazardous,
-        WeatherService weather)
+        WeatherService weather,
+        GameCycleService cycle)
     {
         _hazardous = hazardous;
         _weather = weather;
+        _cycle = cycle;
     }
 
     public byte Sample()
@@ -28,7 +32,7 @@ public sealed class WeatherStateSampler
         {
             var hw = _hazardous.CurrentCycleHazardousWeather;
             if (hw == null) return MetricHistory.WeatherTemperate;
-            if (_weather.CycleDay < _weather.HazardousWeatherStartCycleDay)
+            if (_cycle.CycleDay < _weather.HazardousWeatherStartCycleDay)
                 return MetricHistory.WeatherTemperate;
 
             string name = hw.GetType().Name;
