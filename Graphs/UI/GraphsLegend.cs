@@ -4,36 +4,40 @@ using System.Globalization;
 using System.Linq;
 using Graphs.Metrics;
 using Timberborn.Goods;
+using Timberborn.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-/// Scrollable category-grouped list of per-metric checkbox rows.
-/// Goods rows include the game's own good icon.
+/// Scrollable legend of checkbox rows, grouped by metric category.
+/// Goods are further sub-grouped by the game's own good-group ids
+/// (e.g. Food, Ingredients, Logs, Metal, etc.) so related goods cluster.
+/// Each goods row shows the game's icon + localized name.
 public sealed class GraphsLegend
 {
     private static readonly HashSet<string> DefaultVisible = new()
     {
-        "good.Log", "good.Plank", "good.Water", "good.Berry",
+        "good.Log", "good.Plank", "good.Water", "good.Berries",
         "good.MapleSyrup", "good.Gear", "good.Biofuel",
         "pop.total", "science.stored", "wellbeing.avg",
     };
 
     private readonly MetricRegistry _registry;
     private readonly IGoodService _goodService;
+    private readonly ILoc _loc;
 
     public HashSet<string> VisibleMetricIds { get; } = new();
     public event Action? Changed;
 
     private readonly Dictionary<string, Label> _valueLabels = new();
-
     private bool _defaultsApplied;
 
-    public GraphsLegend(MetricRegistry registry, IGoodService goodService)
+    public GraphsLegend(MetricRegistry registry, IGoodService goodService, ILoc loc)
     {
         _registry = registry;
         _goodService = goodService;
+        _loc = loc;
     }
 
     public VisualElement Build()
@@ -75,18 +79,89 @@ public sealed class GraphsLegend
         MetricCategory category, IEnumerable<MetricDefinition> metrics)
     {
         var section = new VisualElement();
-        section.style.marginBottom = 8;
+        section.style.marginBottom = 6;
 
         var header = new Label(category.ToString().ToUpperInvariant());
         header.style.color = new Color(0.75f, 0.75f, 0.80f);
-        header.style.fontSize = 12;
+        header.style.fontSize = 13;
+        header.style.unityFontStyleAndWeight = FontStyle.Bold;
         header.style.marginBottom = 2;
         section.Add(header);
 
-        foreach (var def in metrics)
-            section.Add(BuildRow(def));
+        if (category == MetricCategory.Goods)
+            BuildGoodsGroups(section, metrics);
+        else
+            foreach (var def in metrics)
+                section.Add(BuildRow(def));
 
         return section;
+    }
+
+    private void BuildGoodsGroups(VisualElement section, IEnumerable<MetricDefinition> metrics)
+    {
+        // Group goods by their GoodSpec.GoodGroupId.
+        var groups = new SortedDictionary<string, List<MetricDefinition>>(StringComparer.Ordinal);
+        var ungrouped = new List<MetricDefinition>();
+
+        foreach (var def in metrics)
+        {
+            string? groupId = null;
+            if (def.Id.StartsWith("good.", StringComparison.Ordinal))
+            {
+                var goodId = def.Id.Substring("good.".Length);
+                try { groupId = _goodService.GetGood(goodId)?.GoodGroupId; } catch { }
+            }
+            if (string.IsNullOrEmpty(groupId))
+            {
+                ungrouped.Add(def);
+                continue;
+            }
+            if (!groups.TryGetValue(groupId!, out var list))
+            {
+                list = new List<MetricDefinition>();
+                groups[groupId!] = list;
+            }
+            list.Add(def);
+        }
+
+        foreach (var (groupId, list) in groups)
+        {
+            var groupHeader = new Label(PrettifyGroupId(groupId));
+            groupHeader.style.color = new Color(0.60f, 0.72f, 0.80f);
+            groupHeader.style.fontSize = 11;
+            groupHeader.style.marginTop = 4;
+            groupHeader.style.marginLeft = 4;
+            section.Add(groupHeader);
+
+            foreach (var def in list) section.Add(BuildRow(def));
+        }
+
+        if (ungrouped.Count > 0)
+        {
+            var u = new Label("OTHER");
+            u.style.color = new Color(0.55f, 0.55f, 0.55f);
+            u.style.fontSize = 11;
+            u.style.marginTop = 4;
+            u.style.marginLeft = 4;
+            section.Add(u);
+            foreach (var def in ungrouped) section.Add(BuildRow(def));
+        }
+    }
+
+    private static string PrettifyGroupId(string groupId)
+    {
+        // Group ids are typically CamelCase ids like "Food" or "Ingredients" —
+        // show them uppercased with spaces inserted before interior capitals.
+        if (string.IsNullOrEmpty(groupId)) return groupId;
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < groupId.Length; i++)
+        {
+            char c = groupId[i];
+            if (i > 0 && char.IsUpper(c) && !char.IsUpper(groupId[i - 1]))
+                sb.Append(' ');
+            sb.Append(c);
+        }
+        return sb.ToString().ToUpperInvariant();
     }
 
     private VisualElement BuildRow(MetricDefinition def)
@@ -95,6 +170,7 @@ public sealed class GraphsLegend
         row.style.flexDirection = FlexDirection.Row;
         row.style.alignItems = Align.Center;
         row.style.height = 24;
+        row.style.marginLeft = 6;
 
         var swatch = new VisualElement();
         swatch.style.width = 10; swatch.style.height = 10;
@@ -112,23 +188,16 @@ public sealed class GraphsLegend
         });
         row.Add(toggle);
 
-        // Good metrics: show the game's own icon.
-        if (def.Category == MetricCategory.Goods &&
-            def.Id.StartsWith("good.", StringComparison.Ordinal))
+        string displayName = ResolveDisplayName(def, out Sprite? icon);
+        if (icon != null)
         {
-            var goodId = def.Id.Substring("good.".Length);
-            Sprite? sprite = null;
-            try { sprite = _goodService.GetGood(goodId)?.Icon.Asset; } catch { }
-            if (sprite != null)
-            {
-                var icon = new Image { sprite = sprite };
-                icon.style.width = 18; icon.style.height = 18;
-                icon.style.marginRight = 4;
-                row.Add(icon);
-            }
+            var img = new Image { sprite = icon };
+            img.style.width = 18; img.style.height = 18;
+            img.style.marginRight = 4;
+            row.Add(img);
         }
 
-        var name = new Label(def.NameLocKey);
+        var name = new Label(displayName);
         name.style.flexGrow = 1;
         name.style.color = Color.white;
         name.style.fontSize = 12;
@@ -143,5 +212,45 @@ public sealed class GraphsLegend
         row.Add(value);
 
         return row;
+    }
+
+    /// For goods, return the game's localized DisplayName and grab the icon.
+    /// For other metrics, use the loc service to translate NameLocKey; if that
+    /// returns the key itself (no translation loaded), strip the dotted prefix
+    /// so rows read "Total" / "Adults" instead of "Graphs.Metric.Total".
+    private string ResolveDisplayName(MetricDefinition def, out Sprite? icon)
+    {
+        icon = null;
+
+        if (def.Category == MetricCategory.Goods &&
+            def.Id.StartsWith("good.", StringComparison.Ordinal))
+        {
+            var goodId = def.Id.Substring("good.".Length);
+            try
+            {
+                var spec = _goodService.GetGood(goodId);
+                if (spec != null)
+                {
+                    icon = spec.Icon.Asset;
+                    var display = spec.DisplayName.Value;
+                    if (!string.IsNullOrEmpty(display)) return display;
+                }
+            }
+            catch { }
+            return goodId;
+        }
+
+        var fallback = def.NameLocKey;
+        try
+        {
+            var t = _loc.T(def.NameLocKey);
+            if (!string.IsNullOrEmpty(t) && t != def.NameLocKey) return t;
+        }
+        catch { }
+        // Strip everything before the last '.' so "Graphs.Metric.Total" → "Total".
+        int lastDot = fallback.LastIndexOf('.');
+        return lastDot >= 0 && lastDot < fallback.Length - 1
+            ? fallback.Substring(lastDot + 1)
+            : fallback;
     }
 }

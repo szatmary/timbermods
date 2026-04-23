@@ -1,4 +1,5 @@
 using Graphs.Metrics;
+using Timberborn.CoreUI;
 using Timberborn.RootProviders;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,6 +13,7 @@ public sealed class GraphsWindow
     private const int SortOrder = 1000;
 
     private readonly RootVisualElementProvider _rootProvider;
+    private readonly VisualElementInitializer _elementInitializer;
     private readonly GraphsRangeSelector _rangeSelector;
     private readonly GraphsDistrictSelector _districtSelector;
     private readonly GraphsLegend _legend;
@@ -26,6 +28,7 @@ public sealed class GraphsWindow
 
     public GraphsWindow(
         RootVisualElementProvider rootProvider,
+        VisualElementInitializer elementInitializer,
         GraphsRangeSelector rangeSelector,
         GraphsDistrictSelector districtSelector,
         GraphsLegend legend,
@@ -35,6 +38,7 @@ public sealed class GraphsWindow
         DistrictFilter filter)
     {
         _rootProvider = rootProvider;
+        _elementInitializer = elementInitializer;
         _rangeSelector = rangeSelector;
         _districtSelector = districtSelector;
         _legend = legend;
@@ -57,6 +61,10 @@ public sealed class GraphsWindow
         _document = _rootProvider.CreateEmpty("graphs-window-doc", SortOrder);
         _root = Build();
         _document.rootVisualElement.Add(_root);
+        // Apply the game's native USS styling to every element in our tree —
+        // toggles pick up the game's checkbox sprite, buttons get the game's
+        // nine-sliced background, scrollbars get the game's rails, etc.
+        _elementInitializer.InitializeVisualElement(_root);
         _root.Focus();
 
         _sampler.OnSampled += RefreshValues;
