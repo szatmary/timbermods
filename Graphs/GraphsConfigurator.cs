@@ -23,6 +23,7 @@ public class GraphsConfigurator : Configurator
         MultiBind<IMetricProvider>().To<PopulationMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<GoodsMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<WellbeingMetricProvider>().AsSingleton();
+        MultiBind<IMetricProvider>().To<StatisticsMetricProvider>().AsSingleton();
 
         // UI
         Bind<GraphsRangeSelector>().AsSingleton();
