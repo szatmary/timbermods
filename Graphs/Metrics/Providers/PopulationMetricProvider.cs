@@ -5,42 +5,45 @@ using Timberborn.Population;
 
 namespace Graphs.Metrics.Providers;
 
-/// Registers population-count metrics: head counts, housing/employment
-/// shortfalls, and health-adjacent counts (infected/contaminated).
-/// Everything funnels through the game's PopulationDataCollector where possible
-/// so we don't re-implement aggregation logic.
+/// Population head counts, housing/employment shortfalls, and contamination
+/// counters. Settlement-wide values come from `PopulationService.GlobalPopulationData`
+/// which the game updates continuously. Per-district values use
+/// `PopulationDataCollector.CollectData` against the selected district.
 ///
-/// TODO: injury detection — see NOTES.md. No `Injurable.IsInjured` boolean
-/// exists; injury is encoded as an active `Need` with id `InjuryNeedId`. Adding
-/// `pop.injured` means walking each Character's `Needs.AllNeeds` every sample,
-/// which is heavier than the other metrics and needs a design pass.
+/// TODO: injury detection — see NOTES.md. Injury is encoded as an active
+/// `Need` with id `InjuryNeedId`; counting requires walking each Character's
+/// `Needs.AllNeeds` every sample.
 public sealed class PopulationMetricProvider : IMetricProvider
 {
-    private readonly DistrictCenterRegistry _districtCenterRegistry;
+    private readonly PopulationService _populationService;
     private readonly PopulationDataCollector _populationDataCollector;
+    private readonly DistrictCenterRegistry _districtCenterRegistry;
 
-    /// Scratch buffer reused for per-sample CollectData calls. PopulationData is a
-    /// mutable class; the collector fills it in-place, so a singleton instance is fine.
     private readonly PopulationData _scratch = new();
 
     public PopulationMetricProvider(
-        DistrictCenterRegistry districtCenterRegistry,
-        PopulationDataCollector populationDataCollector)
+        PopulationService populationService,
+        PopulationDataCollector populationDataCollector,
+        DistrictCenterRegistry districtCenterRegistry)
     {
-        _districtCenterRegistry = districtCenterRegistry;
+        _populationService = populationService;
         _populationDataCollector = populationDataCollector;
+        _districtCenterRegistry = districtCenterRegistry;
     }
 
     public IEnumerable<MetricDefinition> GetMetrics()
     {
-        yield return FromDistrictData("pop.total", "Graphs.Metric.Total", d => d.TotalPopulation);
-        yield return FromDistrictData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults);
-        yield return FromDistrictData("pop.kits", "Graphs.Metric.Kits", d => d.NumberOfChildren);
-        yield return FromDistrictData("pop.bots", "Graphs.Metric.Bots", d => d.NumberOfBots);
-        yield return FromDistrictData("pop.homeless", "Graphs.Metric.Homeless", d => d.BedData.Homeless);
-        yield return FromDistrictData("pop.unemployed.beavers", "Graphs.Metric.UnemployedBeavers", d => d.BeaverWorkplaceData.Unemployed);
-        yield return FromDistrictData("pop.unemployed.bots", "Graphs.Metric.UnemployedBots", d => d.BotWorkplaceData.Unemployed);
-        yield return FromDistrictData("pop.contaminated", "Graphs.Metric.Contaminated", d => d.ContaminationData.ContaminatedTotal);
+        yield return FromData("pop.total", "Graphs.Metric.Total", d => d.TotalPopulation);
+        yield return FromData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults);
+        yield return FromData("pop.kits", "Graphs.Metric.Kits", d => d.NumberOfChildren);
+        yield return FromData("pop.bots", "Graphs.Metric.Bots", d => d.NumberOfBots);
+        yield return FromData("pop.homeless", "Graphs.Metric.Homeless", d => d.BedData.Homeless);
+        yield return FromData("pop.unemployed.beavers", "Graphs.Metric.UnemployedBeavers",
+            d => d.BeaverWorkplaceData.Unemployed);
+        yield return FromData("pop.unemployed.bots", "Graphs.Metric.UnemployedBots",
+            d => d.BotWorkplaceData.Unemployed);
+        yield return FromData("pop.contaminated", "Graphs.Metric.Contaminated",
+            d => d.ContaminationData.ContaminatedTotal);
 
         yield return new MetricDefinition(
             id: "pop.infected",
@@ -50,65 +53,41 @@ public sealed class PopulationMetricProvider : IMetricProvider
             valueFn: CountInfected);
     }
 
-    /// Build a metric whose value comes from a PopulationData field. The collector
-    /// fills our scratch buffer once per district; we sum across all districts (or
-    /// pick one when the filter selects a single district).
-    private MetricDefinition FromDistrictData(string id, string locKey, System.Func<PopulationData, int> extract)
-    {
-        return new MetricDefinition(
-            id: id,
-            nameLocKey: locKey,
-            category: MetricCategory.Population,
-            scope: MetricScope.District,
-            valueFn: districtName => SumAcross(districtName, extract));
-    }
+    private MetricDefinition FromData(string id, string locKey, System.Func<PopulationData, int> extract) =>
+        new(id, locKey, MetricCategory.Population, MetricScope.District,
+            districtName => ExtractFor(districtName, extract));
 
-    /// Aggregate `extract` across districts matching the filter.
-    /// When `districtName` is null, sums every finished district; otherwise returns
-    /// the single matching district's value, or 0 if no district has that name.
-    private float SumAcross(string? districtName, System.Func<PopulationData, int> extract)
+    private float ExtractFor(string? districtName, System.Func<PopulationData, int> extract)
     {
-        var total = 0;
+        if (districtName is null)
+        {
+            // Settlement-wide: use the game's already-aggregated data.
+            var data = _populationService.GlobalPopulationData;
+            return data == null ? 0 : extract(data);
+        }
+
+        // Per-district: collect into scratch.
         foreach (var district in _districtCenterRegistry.FinishedDistrictCenters)
         {
-            if (districtName != null && district.DistrictName != districtName)
-            {
-                continue;
-            }
-            if (!_populationDataCollector.CollectData(district, _scratch))
-            {
-                continue;
-            }
-            total += extract(_scratch);
+            if (district.DistrictName != districtName) continue;
+            _populationDataCollector.CollectData(district, _scratch);
+            return extract(_scratch);
         }
-        return total;
+        return 0;
     }
 
-    /// Count beavers whose ContaminationIncubator is currently running (pre-
-    /// contamination illness). PopulationData doesn't track incubation separately,
-    /// so we walk each district's Beavers list and probe for the component.
-    /// Bots can't be infected, so beavers-only is the right set to scan.
     private float CountInfected(string? districtName)
     {
-        var count = 0;
+        int count = 0;
         foreach (var district in _districtCenterRegistry.FinishedDistrictCenters)
         {
-            if (districtName != null && district.DistrictName != districtName)
-            {
-                continue;
-            }
+            if (districtName != null && district.DistrictName != districtName) continue;
             var population = district.DistrictPopulation;
-            if (population == null)
-            {
-                continue;
-            }
+            if (population == null) continue;
             foreach (var beaver in population.Beavers)
             {
                 var incubator = beaver.GetComponent<ContaminationIncubator>();
-                if (incubator != null && incubator.IsIncubating)
-                {
-                    count++;
-                }
+                if (incubator != null && incubator.IsIncubating) count++;
             }
         }
         return count;
