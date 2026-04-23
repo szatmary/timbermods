@@ -11,14 +11,16 @@ public sealed class GraphsWindow
     private const int SortOrder = 1000;
 
     private readonly RootVisualElementProvider _rootProvider;
+    private readonly GraphsRangeSelector _rangeSelector;
     private UIDocument? _document;
     private VisualElement? _root;
 
     public bool IsOpen => _root != null;
 
-    public GraphsWindow(RootVisualElementProvider rootProvider)
+    public GraphsWindow(RootVisualElementProvider rootProvider, GraphsRangeSelector rangeSelector)
     {
         _rootProvider = rootProvider;
+        _rangeSelector = rangeSelector;
     }
 
     public void Toggle()
@@ -105,6 +107,7 @@ public sealed class GraphsWindow
         bottom.style.flexDirection = FlexDirection.Row;
         bottom.style.justifyContent = Justify.Center;
         bottom.style.alignItems = Align.Center;
+        bottom.Add(_rangeSelector.Build());
         root.Add(bottom);
 
         return root;

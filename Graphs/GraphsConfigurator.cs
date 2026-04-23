@@ -25,6 +25,7 @@ public class GraphsConfigurator : Configurator
         MultiBind<IMetricProvider>().To<WellbeingMetricProvider>().AsSingleton();
 
         // UI
+        Bind<GraphsRangeSelector>().AsSingleton();
         Bind<GraphsWindow>().AsSingleton();
         Bind<GraphsHotkey>().AsSingleton();
     }
