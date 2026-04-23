@@ -12,13 +12,21 @@ public sealed class GraphsChart
 
     private readonly MetricSampler _sampler;
     private readonly GraphsRangeSelector _range;
+    private readonly MetricRegistry _registry;
+    private readonly GraphsLegend _legend;
 
     private VisualElement? _element;
 
-    public GraphsChart(MetricSampler sampler, GraphsRangeSelector range)
+    public GraphsChart(
+        MetricSampler sampler,
+        GraphsRangeSelector range,
+        MetricRegistry registry,
+        GraphsLegend legend)
     {
         _sampler = sampler;
         _range = range;
+        _registry = registry;
+        _legend = legend;
     }
 
     public VisualElement Build()
@@ -28,6 +36,8 @@ public sealed class GraphsChart
         _element.style.backgroundColor = new StyleColor(new Color(0.04f, 0.04f, 0.06f));
         _element.generateVisualContent += Draw;
         _range.Changed += () => _element?.MarkDirtyRepaint();
+        _legend.Changed += () => _element?.MarkDirtyRepaint();
+        _sampler.OnSampled += () => _element?.MarkDirtyRepaint();
         return _element;
     }
 
@@ -52,6 +62,87 @@ public sealed class GraphsChart
         if (startIdx >= endIdx) return;
 
         DrawWeatherBands(ctx, rect, history, startIdx, endIdx, startTimestamp, latestTimestamp);
+        DrawGridlines(ctx, rect);
+        DrawLines(ctx, rect, history, startIdx, endIdx, startTimestamp, latestTimestamp);
+    }
+
+    private static void DrawGridlines(MeshGenerationContext ctx, Rect rect)
+    {
+        var color = new Color(0.25f, 0.25f, 0.28f, 0.5f);
+        for (int i = 1; i <= 4; i++)
+        {
+            float y = rect.y + rect.height * i / 5f;
+            FillRect(ctx, new Rect(rect.x, y, rect.width, 1), color);
+        }
+    }
+
+    private void DrawLines(
+        MeshGenerationContext ctx, Rect rect, MetricHistory history,
+        int startIdx, int endIdx, float startT, float endT)
+    {
+        float span = endT - startT;
+        if (span <= 0) return;
+        int sampleCount = endIdx - startIdx;
+        if (sampleCount < 2) return;
+
+        var metrics = _registry.Metrics;
+        for (int m = 0; m < metrics.Count; m++)
+        {
+            var def = metrics[m];
+            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+
+            float min = float.PositiveInfinity, max = float.NegativeInfinity;
+            for (int i = startIdx; i < endIdx; i++)
+            {
+                float v = history.ReadValue(i, m);
+                if (float.IsNaN(v)) continue;
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            if (float.IsInfinity(min) || float.IsInfinity(max)) continue;
+
+            float range = max - min;
+            Color color = GraphColors.ColorFor(def.Id, def.Category);
+
+            bool havePrev = false;
+            Vector2 prev = default;
+            for (int i = startIdx; i < endIdx; i++)
+            {
+                float v = history.ReadValue(i, m);
+                if (float.IsNaN(v)) { havePrev = false; continue; }
+                float t = history.ReadTimestamp(i);
+                float x = rect.x + ((t - startT) / span) * rect.width;
+                float norm = range > 0 ? (v - min) / range : 0.5f;
+                float y = rect.y + rect.height - norm * rect.height;
+
+                if (havePrev)
+                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 2f);
+                prev = new Vector2(x, y);
+                havePrev = true;
+            }
+        }
+    }
+
+    private static void DrawSegment(
+        MeshGenerationContext ctx, Vector2 a, Vector2 b, Color color, float thickness)
+    {
+        Vector2 dir = b - a;
+        float len = dir.magnitude;
+        if (len < 0.0001f) return;
+        Vector2 normal = new Vector2(-dir.y, dir.x) / len * thickness * 0.5f;
+
+        Vector3 v0 = new(a.x + normal.x, a.y + normal.y, Vertex.nearZ);
+        Vector3 v1 = new(b.x + normal.x, b.y + normal.y, Vertex.nearZ);
+        Vector3 v2 = new(b.x - normal.x, b.y - normal.y, Vertex.nearZ);
+        Vector3 v3 = new(a.x - normal.x, a.y - normal.y, Vertex.nearZ);
+
+        var mesh = ctx.Allocate(4, 6);
+        mesh.SetNextVertex(new Vertex { position = v0, tint = color });
+        mesh.SetNextVertex(new Vertex { position = v1, tint = color });
+        mesh.SetNextVertex(new Vertex { position = v2, tint = color });
+        mesh.SetNextVertex(new Vertex { position = v3, tint = color });
+        mesh.SetNextIndex(0); mesh.SetNextIndex(1); mesh.SetNextIndex(2);
+        mesh.SetNextIndex(0); mesh.SetNextIndex(2); mesh.SetNextIndex(3);
     }
 
     private static void DrawWeatherBands(
