@@ -6,8 +6,11 @@ namespace Graphs.UI;
 
 public sealed class GraphsChart
 {
-    private static readonly Color DroughtColor   = new(1.00f, 0.55f, 0.15f, 0.15f);
-    private static readonly Color BadtideColor   = new(0.60f, 0.25f, 0.80f, 0.15f);
+    // Tints chosen to match the game's own weather theming:
+    // - Drought: hazy amber/yellow (like the dry-season skies and grass)
+    // - Badtide: sickly pink-magenta (like badwater)
+    private static readonly Color DroughtColor   = new(0.95f, 0.70f, 0.20f, 0.18f);
+    private static readonly Color BadtideColor   = new(0.90f, 0.30f, 0.55f, 0.20f);
     private static readonly Color TemperateColor = new(0, 0, 0, 0);
 
     private readonly MetricSampler _sampler;

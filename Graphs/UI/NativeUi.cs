@@ -18,17 +18,25 @@ public static class NativeUi
     private static readonly Type? _nineSliceButtonType =
         typeof(VisualElementInitializer).Assembly.GetType("Timberborn.CoreUI.NineSliceButton");
 
+    private static readonly FieldInfo? _localizableToggleTextLocKeyField =
+        _localizableToggleType?.GetField(
+            "_textLocKey",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
     public static Toggle CreateLocalizableToggle(bool initialValue)
     {
         if (_localizableToggleType != null)
         {
             if (Activator.CreateInstance(_localizableToggleType) is Toggle t)
             {
+                // VisualElementLocalizer throws if _textLocKey is null; we
+                // don't need a label on these toggles (the metric name lives
+                // in a sibling Label), so seed it with an empty string.
+                _localizableToggleTextLocKeyField?.SetValue(t, string.Empty);
                 t.value = initialValue;
                 return t;
             }
         }
-        // Fallback: plain Toggle if the internal type moves.
         return new Toggle { value = initialValue };
     }
 
