@@ -61,14 +61,32 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 
 ## Wellbeing
 
-- `Timberborn.Wellbeing.WellbeingService`
-  - `GetAverageWellbeing(DistrictCenter)` / `GetAverageWellbeing()` global
-  - `GetMaxWellbeing(...)` / `MaxBeaverWellbeing`
+- `Timberborn.Wellbeing.WellbeingService` — DI-injectable, **but** its public surface is:
+  - `AverageGlobalWellbeing` (int property)
+  - `AverageDistrictWellbeing` (int property — current switched district only, not arbitrary)
+  - `SwitchDistrict(DistrictCenter)` (mutates which district is tracked)
+  - ⚠ **Does NOT have `GetAverageWellbeing(DistrictCenter)` or `GetMaxWellbeing(...)`** — those names in the old template doc were wrong.
 - `Timberborn.Wellbeing.WellbeingTracker` (component on Character)
-  - `Wellbeing` property (`get_Wellbeing`) — the per-beaver score.
+  - `Wellbeing` property (`get_Wellbeing`) — the per-beaver score. Type is `int`, not `float`.
+- `Timberborn.Wellbeing.WellbeingTrackerRegistry` — **internal** (can't be referenced from a mod). Exposes `GetAverageWellbeing()` + private `_wellbeingTrackers` HashSet. To aggregate without this type, iterate beavers directly via `DistrictPopulation.Beavers` and read each `WellbeingTracker.Wellbeing`.
+- `GlobalWellbeingTrackerRegistry`, `DistrictWellbeingTrackerRegistry` — both **internal**; can't be injected either. `DistrictWellbeingTrackerRegistry` is a sibling component on `DistrictCenter` (reachable only through reflection since the type isn't visible).
 - Events: `WellbeingChangedEventArgs` (with `OldWellbeing`, `NewWellbeing`), `NewWellbeingHighscoreEvent`.
-- For district-wide aggregates: `DistrictWellbeingTrackerRegistry` / `GlobalWellbeingTrackerRegistry`.
 - No plain `Wellbeing` type — use `WellbeingTracker` component.
+
+## Needs / hunger / thirst
+
+- `Timberborn.NeedSystem.NeedManager` (component on Character) — public surface for probing a need on one beaver:
+  - `HasNeed(string needId) -> bool`
+  - `NeedIsActive(string needId) -> bool`
+  - `GetNeedPoints(string needId) -> float` (current value)
+  - `GetNeedSpec(string needId) -> NeedSpec` (null when not present)
+  - `NeedSpecs` — `ImmutableArray<NeedSpec>` (all needs on this character)
+  - ⚠ **There is NO `GetSatisfaction` method**. Compute satisfaction as `GetNeedPoints(id) / GetNeedSpec(id).MaximumValue` — returns a 0..1 float.
+- `Timberborn.NeedSpecs.NeedSpec` — the blueprint:
+  - `Id`, `MaximumValue`, `MinimumValue`, `StartingValue`, `DailyDelta`, `DisplayNameLocKey`, etc.
+- **Food / water need ids are faction-specific** (Folktails and Iron Teeth use different spec ids). They're stored in `Timberborn.GameFactionSystem.NeedModificationService` as **non-public static readonly string** fields named `FoodNeedId` and `WaterNeedId`, populated at config time. Read them via reflection: `typeof(NeedModificationService).GetField("FoodNeedId", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)`.
+- Separate (achievement-only) constants `HungerNeedId` / `ThirstNeedId` exist on `Timberborn.Achievements.BeaverDiesMiserableAchievement` (also private static) — use the `NeedModificationService` pair for satisfaction metrics; those are the live ids the `NeedManager` queries against.
+- `FactionNeedService` (public, DI-injectable) exposes `GetBeaverNeeds()`, `GetBotNeeds()`, `IsCurrentFactionNeed(id)`, `GetBeaverOrBotNeedById(id)` — use when you need to enumerate faction-scoped need specs directly.
 
 ## Beavers / bots / entities
 
@@ -175,7 +193,9 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 - `ScienceService.SciencePoints` — confirmed.
 - `Injurable.IsInjured` — **does not exist**. Replaced with "active need with injury id" pattern.
 - `ContaminationIncubator.IsIncubating` — confirmed.
-- `Wellbeing` component — **does not exist as bare `Wellbeing`**. The per-character component is `WellbeingTracker`; score is `WellbeingTracker.Wellbeing`.
+- `Wellbeing` component — **does not exist as bare `Wellbeing`**. The per-character component is `WellbeingTracker`; score is `WellbeingTracker.Wellbeing` (int).
+- `WellbeingService.GetAverageWellbeing(...) / GetMaxWellbeing(...)` — **do not exist**. The service only exposes `AverageGlobalWellbeing` and `AverageDistrictWellbeing` (both int properties tied to the currently-switched district). Aggregate averages by walking `DistrictPopulation.Beavers` directly; the tracker-registry types are internal.
+- `NeedManager.GetSatisfaction(id)` — **does not exist**. Compute `GetNeedPoints(id) / GetNeedSpec(id).MaximumValue` instead.
 - `GoodSpecService` — **does not exist**. Use `IGoodService.Goods` (strings) for enumeration; `IGoodService.GetGood(id)` for the `GoodSpec` blueprint.
 - `inv.Stock.Get(id)` — no such API. Use `Inventory.AmountInStock(goodId)` for a single good; `Stock` is a `ReadOnlyList` for iteration.
 - `DistrictInventoryRegistry.AllInventories` — **does not exist**. Use `Inventories` (ReadOnlyHashSet\<Inventory\>).
