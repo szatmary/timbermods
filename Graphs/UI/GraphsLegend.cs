@@ -26,16 +26,20 @@ public sealed class GraphsLegend
 
     private readonly Dictionary<string, Label> _valueLabels = new();
 
+    private bool _defaultsApplied;
+
     public GraphsLegend(MetricRegistry registry)
     {
         _registry = registry;
-        foreach (var m in registry.Metrics)
-            if (DefaultVisible.Contains(m.Id))
-                VisibleMetricIds.Add(m.Id);
+        // Registry is populated during Load(), which may happen AFTER this
+        // constructor runs. Defer defaults until Build() is called (at which
+        // point the window is being opened and the registry is fully loaded).
     }
 
     public VisualElement Build()
     {
+        ApplyDefaultsIfNeeded();
+
         var scroll = new ScrollView(ScrollViewMode.Vertical);
         scroll.style.flexGrow = 1;
 
@@ -47,6 +51,15 @@ public sealed class GraphsLegend
         }
 
         return scroll;
+    }
+
+    private void ApplyDefaultsIfNeeded()
+    {
+        if (_defaultsApplied) return;
+        _defaultsApplied = true;
+        foreach (var m in _registry.Metrics)
+            if (DefaultVisible.Contains(m.Id))
+                VisibleMetricIds.Add(m.Id);
     }
 
     public void UpdateCurrentValues(Func<string, float> valueOf)
