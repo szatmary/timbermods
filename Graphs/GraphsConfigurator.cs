@@ -1,6 +1,7 @@
 using Bindito.Core;
 using Graphs.Metrics;
 using Graphs.Metrics.Providers;
+using Graphs.UI;
 
 namespace Graphs;
 
@@ -22,5 +23,9 @@ public class GraphsConfigurator : Configurator
         MultiBind<IMetricProvider>().To<PopulationMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<GoodsMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<WellbeingMetricProvider>().AsSingleton();
+
+        // UI
+        Bind<GraphsWindow>().AsSingleton();
+        Bind<GraphsHotkey>().AsSingleton();
     }
 }
