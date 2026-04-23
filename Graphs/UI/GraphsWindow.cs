@@ -13,6 +13,7 @@ public sealed class GraphsWindow
     private readonly RootVisualElementProvider _rootProvider;
     private readonly GraphsRangeSelector _rangeSelector;
     private readonly GraphsDistrictSelector _districtSelector;
+    private readonly GraphsLegend _legend;
     private UIDocument? _document;
     private VisualElement? _root;
 
@@ -21,11 +22,13 @@ public sealed class GraphsWindow
     public GraphsWindow(
         RootVisualElementProvider rootProvider,
         GraphsRangeSelector rangeSelector,
-        GraphsDistrictSelector districtSelector)
+        GraphsDistrictSelector districtSelector,
+        GraphsLegend legend)
     {
         _rootProvider = rootProvider;
         _rangeSelector = rangeSelector;
         _districtSelector = districtSelector;
+        _legend = legend;
     }
 
     public void Toggle()
@@ -106,6 +109,7 @@ public sealed class GraphsWindow
         legendSlot.style.marginTop = 12;
         legendSlot.style.marginBottom = 12;
         legendSlot.Add(_districtSelector.Build());
+        legendSlot.Add(_legend.Build());
         body.Add(legendSlot);
 
         var bottom = new VisualElement { name = "graphs-bottom" };

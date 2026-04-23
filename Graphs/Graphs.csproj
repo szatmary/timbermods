@@ -35,6 +35,9 @@
     <Reference Include="$(GameManagedDir)/UnityEngine.UIElementsModule.dll">
       <Private>false</Private>
     </Reference>
+    <Reference Include="$(GameManagedDir)/UnityEngine.TextRenderingModule.dll">
+      <Private>false</Private>
+    </Reference>
     <Reference Include="$(GameManagedDir)/UnityEngine.InputLegacyModule.dll">
       <Private>false</Private>
     </Reference>
