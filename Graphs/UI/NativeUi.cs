@@ -18,26 +18,32 @@ public static class NativeUi
     private static readonly Type? _nineSliceButtonType =
         typeof(VisualElementInitializer).Assembly.GetType("Timberborn.CoreUI.NineSliceButton");
 
-    private static readonly FieldInfo? _localizableToggleTextLocKeyField =
-        _localizableToggleType?.GetField(
-            "_textLocKey",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
     public static Toggle CreateLocalizableToggle(bool initialValue)
     {
-        if (_localizableToggleType != null)
+        if (_localizableToggleType != null &&
+            Activator.CreateInstance(_localizableToggleType) is Toggle t)
         {
-            if (Activator.CreateInstance(_localizableToggleType) is Toggle t)
-            {
-                // VisualElementLocalizer throws if _textLocKey is null; we
-                // don't need a label on these toggles (the metric name lives
-                // in a sibling Label), so seed it with an empty string.
-                _localizableToggleTextLocKeyField?.SetValue(t, string.Empty);
-                t.value = initialValue;
-                return t;
-            }
+            // VisualElementLocalizer rejects null/empty _textLocKey — walk
+            // the type hierarchy for any "_textLocKey" field and stuff a
+            // dummy key into each. Its translation is never displayed
+            // because the label comes from a sibling Label.
+            SetTextLocKey(t, "Graphs.Placeholder");
+            t.value = initialValue;
+            return t;
         }
         return new Toggle { value = initialValue };
+    }
+
+    private static void SetTextLocKey(object target, string value)
+    {
+        var type = target.GetType();
+        while (type != null)
+        {
+            var f = type.GetField("_textLocKey",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (f != null) { f.SetValue(target, value); return; }
+            type = type.BaseType;
+        }
     }
 
     public static Button CreateNineSliceButton(string label, Action onClick)
