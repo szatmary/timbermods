@@ -54,23 +54,23 @@ public sealed class GoodsMetricProvider : IMetricProvider
     }
 
     private static bool _loggedStockDiagnostic;
+    private static bool _loggedInventoryCount;
 
     /// Sum `goodId` stock across inventories that pass the district filter.
     /// A null `districtName` means settlement-wide: every inventory counts.
-    /// Exceptions are swallowed so one broken component can't zero the total;
-    /// the first one we see is logged once to aid debugging.
+    /// Iterates ALL inventories (not the pre-filtered ActiveInventoriesWithStock
+    /// index) because starter resources may live in inventories that aren't in
+    /// the index yet.
     private float TotalStock(string goodId, string? districtName)
     {
         var total = 0;
-        var anySucceeded = false;
+        var anyInventory = false;
         try
         {
-            // ActiveInventoriesWithStock returns only inventories that currently
-            // hold any amount of this good — avoids iterating the full settlement
-            // inventory list and any NRE paths there.
-            foreach (var inventory in _districtInventoryRegistry.ActiveInventoriesWithStock(goodId))
+            foreach (var inventory in _districtInventoryRegistry.Inventories)
             {
                 if (inventory == null) continue;
+                anyInventory = true;
                 try
                 {
                     if (districtName != null && GetDistrictName(inventory) != districtName)
@@ -78,7 +78,6 @@ public sealed class GoodsMetricProvider : IMetricProvider
                         continue;
                     }
                     total += inventory.AmountInStock(goodId);
-                    anySucceeded = true;
                 }
                 catch (Exception ex)
                 {
@@ -89,8 +88,20 @@ public sealed class GoodsMetricProvider : IMetricProvider
                     }
                 }
             }
-            // If we exited the loop cleanly with no inventories, that's a real 0.
-            anySucceeded = true;
+            // One-shot: log the inventory count we're iterating, and what Log/Berry look like.
+            if (!_loggedInventoryCount && goodId == "Log")
+            {
+                _loggedInventoryCount = true;
+                int count = 0;
+                int nonEmpty = 0;
+                foreach (var inv in _districtInventoryRegistry.Inventories)
+                {
+                    count++;
+                    try { if (inv.AmountInStock("Log") > 0) nonEmpty++; } catch { }
+                }
+                Debug.Log($"[Graphs] goods diag: {count} inventories total, {nonEmpty} hold Log; current Log sum={total}");
+            }
+            return total;
         }
         catch (Exception ex)
         {
@@ -99,8 +110,8 @@ public sealed class GoodsMetricProvider : IMetricProvider
                 _loggedStockDiagnostic = true;
                 Debug.LogWarning($"[Graphs] goods enumeration failed: {ex}\n{ex.StackTrace}");
             }
+            return anyInventory ? total : float.NaN;
         }
-        return anySucceeded ? total : float.NaN;
     }
 
     /// Resolve an inventory's owning district name, or null if it isn't assigned
