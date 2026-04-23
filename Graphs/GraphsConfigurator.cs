@@ -28,6 +28,7 @@ public class GraphsConfigurator : Configurator
         Bind<GraphsRangeSelector>().AsSingleton();
         Bind<GraphsDistrictSelector>().AsSingleton();
         Bind<GraphsLegend>().AsSingleton();
+        Bind<GraphsChart>().AsSingleton();
         Bind<GraphsWindow>().AsSingleton();
         Bind<GraphsHotkey>().AsSingleton();
     }

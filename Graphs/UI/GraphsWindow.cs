@@ -14,6 +14,7 @@ public sealed class GraphsWindow
     private readonly GraphsRangeSelector _rangeSelector;
     private readonly GraphsDistrictSelector _districtSelector;
     private readonly GraphsLegend _legend;
+    private readonly GraphsChart _chart;
     private UIDocument? _document;
     private VisualElement? _root;
 
@@ -23,12 +24,14 @@ public sealed class GraphsWindow
         RootVisualElementProvider rootProvider,
         GraphsRangeSelector rangeSelector,
         GraphsDistrictSelector districtSelector,
-        GraphsLegend legend)
+        GraphsLegend legend,
+        GraphsChart chart)
     {
         _rootProvider = rootProvider;
         _rangeSelector = rangeSelector;
         _districtSelector = districtSelector;
         _legend = legend;
+        _chart = chart;
     }
 
     public void Toggle()
@@ -101,6 +104,7 @@ public sealed class GraphsWindow
         chartSlot.style.marginLeft = 12;
         chartSlot.style.marginTop = 12;
         chartSlot.style.marginBottom = 12;
+        chartSlot.Add(_chart.Build());
         body.Add(chartSlot);
 
         var legendSlot = new VisualElement { name = "graphs-legend-slot" };
