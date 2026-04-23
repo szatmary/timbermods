@@ -38,7 +38,8 @@ public sealed class PopulationMetricProvider : IMetricProvider
         yield return FromDistrictData("pop.kits", "Graphs.Metric.Kits", d => d.NumberOfChildren);
         yield return FromDistrictData("pop.bots", "Graphs.Metric.Bots", d => d.NumberOfBots);
         yield return FromDistrictData("pop.homeless", "Graphs.Metric.Homeless", d => d.BedData.Homeless);
-        yield return FromDistrictData("pop.unemployed", "Graphs.Metric.Unemployed", d => d.BeaverWorkplaceData.Unemployed);
+        yield return FromDistrictData("pop.unemployed.beavers", "Graphs.Metric.UnemployedBeavers", d => d.BeaverWorkplaceData.Unemployed);
+        yield return FromDistrictData("pop.unemployed.bots", "Graphs.Metric.UnemployedBots", d => d.BotWorkplaceData.Unemployed);
         yield return FromDistrictData("pop.contaminated", "Graphs.Metric.Contaminated", d => d.ContaminationData.ContaminatedTotal);
 
         yield return new MetricDefinition(
