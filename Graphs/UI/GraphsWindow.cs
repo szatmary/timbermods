@@ -65,7 +65,9 @@ public sealed class GraphsWindow
         // toggles pick up the game's checkbox sprite, buttons get the game's
         // nine-sliced background, scrollbars get the game's rails, etc.
         _elementInitializer.InitializeVisualElement(_root);
-        _root.Focus();
+        // Don't call Focus() — stealing keyboard focus from the game causes
+        // the game's own Esc handler (open pause menu) to stop firing after
+        // the window closes. GraphsHotkey polls Esc directly instead.
 
         _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
@@ -106,11 +108,6 @@ public sealed class GraphsWindow
         root.style.position = Position.Absolute;
         root.style.left = 0; root.style.right = 0; root.style.top = 0; root.style.bottom = 0;
         root.style.backgroundColor = new StyleColor(new Color(0.08f, 0.08f, 0.10f, 0.96f));
-        root.focusable = true;
-        root.RegisterCallback<KeyDownEvent>(e =>
-        {
-            if (e.keyCode == KeyCode.Escape) { Close(); e.StopPropagation(); }
-        });
 
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.height = 44;
@@ -126,8 +123,10 @@ public sealed class GraphsWindow
         title.style.fontSize = 20;
         titleBar.Add(title);
 
-        var closeBtn = new Button(Close) { text = "X" };
-        closeBtn.style.width = 32; closeBtn.style.height = 32;
+        var closeBtn = NativeUi.CreateNineSliceButton("×", Close);
+        closeBtn.style.width = 32;
+        closeBtn.style.height = 32;
+        closeBtn.style.fontSize = 20;
         titleBar.Add(closeBtn);
 
         root.Add(titleBar);

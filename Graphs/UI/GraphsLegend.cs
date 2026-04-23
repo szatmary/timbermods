@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Graphs.Metrics;
+using Timberborn.CoreUI;
 using Timberborn.Goods;
 using Timberborn.Localization;
 using UnityEngine;
@@ -178,7 +179,10 @@ public sealed class GraphsLegend
         swatch.style.backgroundColor = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
         row.Add(swatch);
 
-        var toggle = new Toggle { value = VisibleMetricIds.Contains(def.Id) };
+        // Game's native styled checkbox (LocalizableToggle is internal, so
+        // instantiate via reflection). VisualElementInitializer on the window
+        // root then paints the checkbox sprite.
+        var toggle = NativeUi.CreateLocalizableToggle(VisibleMetricIds.Contains(def.Id));
         toggle.style.marginRight = 4;
         toggle.RegisterValueChangedCallback(evt =>
         {
