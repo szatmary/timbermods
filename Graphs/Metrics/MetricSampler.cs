@@ -7,10 +7,14 @@ using UnityEngine;
 
 namespace Graphs.Metrics;
 
-/// Samples every registered metric once per in-game hour.
+/// Samples every registered metric at a fixed cadence in in-game time.
+/// Rate: 240 samples per in-game day (one every 6 in-game minutes) — at
+/// normal game speed that's ~2.5 real seconds between samples, so lines
+/// start to appear almost immediately after opening the window.
 public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton
 {
-    public const int MaxSamples = 48_000; // 2000 days * 24 hours
+    public const int SamplesPerDay = 240;
+    public const int MaxSamples = 48_000; // ~200 in-game days of history.
 
     private readonly IDayNightCycle _dayNightCycle;
     private readonly MetricRegistry _registry;
@@ -18,7 +22,7 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton
     private readonly WeatherStateSampler _weather;
 
     private MetricHistory? _history;
-    private int _lastHourIndex = int.MinValue;
+    private int _lastSampleIndex = int.MinValue;
     private float[]? _scratch;
 
     // Metrics that have already logged a failure this session — so we log each once.
@@ -53,13 +57,13 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton
 
         // Synthetic continuous day count.
         float partialDay = _dayNightCycle.DayNumber + _dayNightCycle.DayProgress;
-        int hourIndex = (int)Math.Floor(partialDay * 24f);
+        int sampleIndex = (int)Math.Floor(partialDay * SamplesPerDay);
 
-        if (hourIndex == _lastHourIndex) return;
+        if (sampleIndex == _lastSampleIndex) return;
 
-        // Take one sample regardless of how many hours actually passed since
-        // last tick — we don't try to backfill missed hours (e.g. after game speed up).
-        _lastHourIndex = hourIndex;
+        // Take one sample regardless of how many sample slots actually passed since
+        // last tick — we don't try to backfill missed slots (e.g. after game speed up).
+        _lastSampleIndex = sampleIndex;
         TakeSample(partialDay);
     }
 
