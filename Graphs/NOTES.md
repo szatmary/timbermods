@@ -131,6 +131,28 @@ Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearin
 
 ---
 
+## Corrections found during implementation
+
+**Population data — the clean path**
+- `Timberborn.Population.PopulationDataCollector` — DI-injectable. `CollectData(DistrictCenter, PopulationData)` fills a `PopulationData` struct with every derived count: `BedData.Homeless`, `BeaverWorkplaceData.Unemployed`, `ContaminationData.ContaminatedTotal`, `TotalPopulation`, etc. Single point of access — much cleaner than wiring individual statistics providers.
+- `Timberborn.Population.PopulationService` exposes `GlobalPopulationData`. `DistrictPopulationData` only gives the currently-switched district, not arbitrary filtering.
+
+**Per-district head counts**
+- `DistrictCenter.DistrictPopulation` is a sibling **component** (`Timberborn.GameDistricts.DistrictPopulation`), NOT an int on `DistrictCenter`. Get it via `districtCenter.GetComponent<DistrictPopulation>()`.
+- `DistrictPopulation` component exposes: `NumberOfAdults`, `NumberOfChildren`, `NumberOfBots`, `Beavers` (ReadOnlyList<Beaver>).
+- There is no `DistrictPopulation` int on `DistrictCenter` directly.
+
+**Statistics-provider struct shapes (actual)**
+- `DwellingStatistics` fields: `OccupiedBeds`, `FreeBeds` (NOT `Homed`, `Homeless`, `Total`, `Vacancies`).
+- `EmploymentStatistics` requires a `workerType: string` argument. Fields: `EmployedWorkers`, `Vacancies`, `WorkerType` (no direct `Unemployed`).
+- `BeaverContaminationStatistics` fields: `ContaminatedAdults`, `ContaminatedChildren`, `Total` (NOT `ContaminatedTotal` — that name lives on `ContaminationData`).
+
+**Enumerating components**
+- `EntityComponentRegistry.GetEnabled<T>()` and `DistrictPopulation.GetEnabledCharacters<T>()` both require `T : BaseComponent, IRegisteredComponent`.
+- `ContaminationIncubator` is a `BaseComponent` but NOT `IRegisteredComponent` → can't enumerate directly. Iterate beavers via `DistrictPopulation.Beavers` and call `beaver.GetComponent<ContaminationIncubator>()` on each.
+- `Beaver` (in `Timberborn.Beavers`) and `Bot` (in `Timberborn.Bots`) both extend `BaseComponent` → they support `GetComponent<T>()`.
+- `Timberborn.GameDistricts.Citizen.AssignedDistrict` — hook from a Character back to its `DistrictCenter`.
+
 ## Items deferred to impl time
 
 1. `StorableGoodRegistry.Goods` element type (`StorableGood` vs `GoodSpec`) — inspect via LSP.
