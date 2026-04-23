@@ -17,10 +17,11 @@ namespace Graphs.UI;
 /// Each goods row shows the game's icon + localized name.
 public sealed class GraphsLegend
 {
+    private const string PrefsKey = "Graphs.VisibleMetricIds";
+
     private static readonly HashSet<string> DefaultVisible = new()
     {
-        "good.Log", "good.Plank", "good.Water", "good.Berries",
-        "good.MapleSyrup", "good.Gear", "good.Biofuel",
+        "good.Log", "good.Berries", "good.Water",
         "pop.total", "science.stored", "wellbeing.avg",
     };
 
@@ -62,9 +63,31 @@ public sealed class GraphsLegend
     {
         if (_defaultsApplied) return;
         _defaultsApplied = true;
+
+        // Restore the user's last-session selection if present. Otherwise
+        // fall back to the curated defaults.
+        var saved = PlayerPrefs.GetString(PrefsKey, "");
+        HashSet<string>? restored = null;
+        if (!string.IsNullOrEmpty(saved))
+        {
+            restored = new HashSet<string>(
+                saved.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries),
+                StringComparer.Ordinal);
+        }
+
         foreach (var m in _registry.Metrics)
-            if (DefaultVisible.Contains(m.Id))
-                VisibleMetricIds.Add(m.Id);
+        {
+            bool visible = restored != null
+                ? restored.Contains(m.Id)
+                : DefaultVisible.Contains(m.Id);
+            if (visible) VisibleMetricIds.Add(m.Id);
+        }
+    }
+
+    private void SavePrefs()
+    {
+        PlayerPrefs.SetString(PrefsKey, string.Join("|", VisibleMetricIds));
+        PlayerPrefs.Save();
     }
 
     public void UpdateCurrentValues(Func<string, float> valueOf)
@@ -173,6 +196,26 @@ public sealed class GraphsLegend
         row.style.height = 24;
         row.style.marginLeft = 6;
 
+        string displayName = ResolveDisplayName(def, out Sprite? icon);
+
+        // Icon on the far left — either the game's good-icon sprite (goods)
+        // or a 20x20 swatch slot (other metrics) so rows align vertically.
+        if (icon != null)
+        {
+            var img = new Image { sprite = icon };
+            img.style.width = 20; img.style.height = 20;
+            img.style.marginRight = 6;
+            row.Add(img);
+        }
+        else
+        {
+            var spacer = new VisualElement();
+            spacer.style.width = 20; spacer.style.height = 20;
+            spacer.style.marginRight = 6;
+            row.Add(spacer);
+        }
+
+        // Color swatch for the line.
         var swatch = new VisualElement();
         swatch.style.width = 10; swatch.style.height = 10;
         swatch.style.marginRight = 6;
@@ -188,18 +231,10 @@ public sealed class GraphsLegend
         {
             if (evt.newValue) VisibleMetricIds.Add(def.Id);
             else VisibleMetricIds.Remove(def.Id);
+            SavePrefs();
             Changed?.Invoke();
         });
         row.Add(toggle);
-
-        string displayName = ResolveDisplayName(def, out Sprite? icon);
-        if (icon != null)
-        {
-            var img = new Image { sprite = icon };
-            img.style.width = 18; img.style.height = 18;
-            img.style.marginRight = 4;
-            row.Add(img);
-        }
 
         var name = new Label(displayName);
         name.style.flexGrow = 1;
