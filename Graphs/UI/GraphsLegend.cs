@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Graphs.Metrics;
+using Timberborn.Goods;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
 /// Scrollable category-grouped list of per-metric checkbox rows.
-/// Phase 1: curated default-visible set hard-coded.
+/// Goods rows include the game's own good icon.
 public sealed class GraphsLegend
 {
     private static readonly HashSet<string> DefaultVisible = new()
@@ -20,6 +21,7 @@ public sealed class GraphsLegend
     };
 
     private readonly MetricRegistry _registry;
+    private readonly IGoodService _goodService;
 
     public HashSet<string> VisibleMetricIds { get; } = new();
     public event Action? Changed;
@@ -28,12 +30,10 @@ public sealed class GraphsLegend
 
     private bool _defaultsApplied;
 
-    public GraphsLegend(MetricRegistry registry)
+    public GraphsLegend(MetricRegistry registry, IGoodService goodService)
     {
         _registry = registry;
-        // Registry is populated during Load(), which may happen AFTER this
-        // constructor runs. Defer defaults until Build() is called (at which
-        // point the window is being opened and the registry is fully loaded).
+        _goodService = goodService;
     }
 
     public VisualElement Build()
@@ -94,7 +94,7 @@ public sealed class GraphsLegend
         var row = new VisualElement();
         row.style.flexDirection = FlexDirection.Row;
         row.style.alignItems = Align.Center;
-        row.style.height = 22;
+        row.style.height = 24;
 
         var swatch = new VisualElement();
         swatch.style.width = 10; swatch.style.height = 10;
@@ -111,6 +111,22 @@ public sealed class GraphsLegend
             Changed?.Invoke();
         });
         row.Add(toggle);
+
+        // Good metrics: show the game's own icon.
+        if (def.Category == MetricCategory.Goods &&
+            def.Id.StartsWith("good.", StringComparison.Ordinal))
+        {
+            var goodId = def.Id.Substring("good.".Length);
+            Sprite? sprite = null;
+            try { sprite = _goodService.GetGood(goodId)?.Icon.Asset; } catch { }
+            if (sprite != null)
+            {
+                var icon = new Image { sprite = sprite };
+                icon.style.width = 18; icon.style.height = 18;
+                icon.style.marginRight = 4;
+                row.Add(icon);
+            }
+        }
 
         var name = new Label(def.NameLocKey);
         name.style.flexGrow = 1;

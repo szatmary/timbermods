@@ -92,42 +92,54 @@ public sealed class GraphsChart
         int sampleCount = endIdx - startIdx;
         if (sampleCount < 1) return;
 
+        // Pass 1: compute per-category min/max across every visible metric
+        // in the category, so all lines in one category share a y-scale.
+        var categoryRanges = new Dictionary<MetricCategory, (float Min, float Max)>();
         var metrics = _registry.Metrics;
         for (int m = 0; m < metrics.Count; m++)
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
 
-            bool logThis = _loggedMetrics.Add(def.Id);
-            if (logThis)
-            {
-                int nanCount = 0;
-                for (int i = startIdx; i < endIdx; i++)
-                    if (float.IsNaN(history.ReadValue(i, m))) nanCount++;
-                float v0 = history.ReadValue(startIdx, m);
-                float vN = history.ReadValue(endIdx - 1, m);
-                Debug.Log($"[Graphs] drawing '{def.Id}': first={v0} last={vN} nan={nanCount}/{sampleCount} rect={rect.width:F0}x{rect.height:F0} span={span:F3}");
-            }
+            categoryRanges.TryGetValue(def.Category, out var cur);
+            if (cur.Min == 0 && cur.Max == 0 && !categoryRanges.ContainsKey(def.Category))
+                cur = (float.PositiveInfinity, float.NegativeInfinity);
 
-            float min = float.PositiveInfinity, max = float.NegativeInfinity;
             for (int i = startIdx; i < endIdx; i++)
             {
                 float v = history.ReadValue(i, m);
                 if (float.IsNaN(v)) continue;
-                if (v < min) min = v;
-                if (v > max) max = v;
+                if (v < cur.Min) cur = (v, cur.Max);
+                if (v > cur.Max) cur = (cur.Min, v);
             }
-            if (float.IsInfinity(min) || float.IsInfinity(max)) continue;
+            categoryRanges[def.Category] = cur;
+        }
 
-            float range = max - min;
+        // Inset the y-axis slightly so lines at min/max values aren't
+        // clipped against the chart edges.
+        const float yMargin = 6f;
+        float innerTop = rect.y + yMargin;
+        float innerBottom = rect.y + rect.height - yMargin;
+        float innerHeight = innerBottom - innerTop;
+
+        // Pass 2: draw each visible metric using its category's shared scale.
+        for (int m = 0; m < metrics.Count; m++)
+        {
+            var def = metrics[m];
+            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+            if (!categoryRanges.TryGetValue(def.Category, out var catRange)) continue;
+            if (float.IsInfinity(catRange.Min) || float.IsInfinity(catRange.Max)) continue;
+
+            float range = catRange.Max - catRange.Min;
             Color color = GraphColors.ColorFor(def.Id, def.Category);
 
-            // Inset the y-axis slightly so lines at min/max values aren't
-            // clipped against the chart edges.
-            const float yMargin = 6f;
-            float innerTop = rect.y + yMargin;
-            float innerBottom = rect.y + rect.height - yMargin;
-            float innerHeight = innerBottom - innerTop;
+            if (_loggedMetrics.Add(def.Id))
+            {
+                int nanCount = 0;
+                for (int i = startIdx; i < endIdx; i++)
+                    if (float.IsNaN(history.ReadValue(i, m))) nanCount++;
+                Debug.Log($"[Graphs] drawing '{def.Id}': category={def.Category} catMin={catRange.Min} catMax={catRange.Max} nan={nanCount}/{sampleCount}");
+            }
 
             bool havePrev = false;
             Vector2 prev = default;
@@ -136,12 +148,10 @@ public sealed class GraphsChart
                 float v = history.ReadValue(i, m);
                 if (float.IsNaN(v)) { havePrev = false; continue; }
                 float t = history.ReadTimestamp(i);
-                float x = span > 0 ? rect.x + ((t - startT) / span) * rect.width : rect.xMax - 4;
-                float norm = range > 0 ? (v - min) / range : 0.5f;
+                float x = rect.x + ((t - startT) / span) * rect.width;
+                float norm = range > 0 ? (v - catRange.Min) / range : 0.5f;
                 float y = innerBottom - norm * innerHeight;
 
-                // Dot at every sample — guarantees visibility regardless of
-                // segment renderer quirks.
                 FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
                 if (havePrev)
                     DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 3f);
