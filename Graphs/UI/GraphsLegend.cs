@@ -28,6 +28,7 @@ public sealed class GraphsLegend
     private readonly MetricRegistry _registry;
     private readonly IGoodService _goodService;
     private readonly ILoc _loc;
+    private readonly GameIcons _icons;
 
     public HashSet<string> VisibleMetricIds { get; } = new();
     public event Action? Changed;
@@ -35,11 +36,12 @@ public sealed class GraphsLegend
     private readonly Dictionary<string, Label> _valueLabels = new();
     private bool _defaultsApplied;
 
-    public GraphsLegend(MetricRegistry registry, IGoodService goodService, ILoc loc)
+    public GraphsLegend(MetricRegistry registry, IGoodService goodService, ILoc loc, GameIcons icons)
     {
         _registry = registry;
         _goodService = goodService;
         _loc = loc;
+        _icons = icons;
     }
 
     public VisualElement Build()
@@ -260,7 +262,7 @@ public sealed class GraphsLegend
     /// so rows read "Total" / "Adults" instead of "Graphs.Metric.Total".
     private string ResolveDisplayName(MetricDefinition def, out Sprite? icon)
     {
-        icon = null;
+        icon = _icons.TryGet(def.Id);
 
         if (def.Category == MetricCategory.Goods &&
             def.Id.StartsWith("good.", StringComparison.Ordinal))

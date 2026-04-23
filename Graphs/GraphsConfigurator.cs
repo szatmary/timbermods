@@ -26,6 +26,7 @@ public class GraphsConfigurator : Configurator
         MultiBind<IMetricProvider>().To<StatisticsMetricProvider>().AsSingleton();
 
         // UI
+        Bind<GameIcons>().AsSingleton();
         Bind<GraphsRangeSelector>().AsSingleton();
         Bind<GraphsDistrictSelector>().AsSingleton();
         Bind<GraphsLegend>().AsSingleton();
