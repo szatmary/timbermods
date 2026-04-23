@@ -61,13 +61,10 @@ public sealed class GraphsWindow
         _document = _rootProvider.CreateEmpty("graphs-window-doc", SortOrder);
         _root = Build();
         _document.rootVisualElement.Add(_root);
-        // Apply the game's native USS styling to every element in our tree —
-        // toggles pick up the game's checkbox sprite, buttons get the game's
-        // nine-sliced background, scrollbars get the game's rails, etc.
-        _elementInitializer.InitializeVisualElement(_root);
-        // Don't call Focus() — stealing keyboard focus from the game causes
-        // the game's own Esc handler (open pause menu) to stop firing after
-        // the window closes. GraphsHotkey polls Esc directly instead.
+        // Native USS initialization deliberately skipped — LocalizableToggle
+        // and friends require paired loc keys that we don't supply, and the
+        // initializer was also stripping simple Image elements. Plain UIToolkit
+        // widgets with our own styling behave predictably.
 
         _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
@@ -104,8 +101,6 @@ public sealed class GraphsWindow
 
     private VisualElement Build()
     {
-        // Full-screen semi-transparent backdrop (like other game modals) with
-        // the actual dialog panel centered inside it.
         var backdrop = new VisualElement { name = "graphs-backdrop" };
         backdrop.style.position = Position.Absolute;
         backdrop.style.left = 0; backdrop.style.right = 0;
@@ -114,49 +109,35 @@ public sealed class GraphsWindow
         backdrop.style.justifyContent = Justify.Center;
         backdrop.style.alignItems = Align.Center;
 
-        // The dialog itself — bordered, with margin off the screen edges.
         var panel = new VisualElement { name = "graphs-panel" };
         panel.style.width = new Length(92, LengthUnit.Percent);
         panel.style.height = new Length(88, LengthUnit.Percent);
         panel.style.maxWidth = 1800;
         panel.style.maxHeight = 1200;
-        panel.style.backgroundColor = new StyleColor(new Color(0.11f, 0.10f, 0.09f, 0.98f));
-        panel.style.borderTopWidth = 2;
-        panel.style.borderBottomWidth = 2;
-        panel.style.borderLeftWidth = 2;
-        panel.style.borderRightWidth = 2;
-        var borderColor = new StyleColor(new Color(0.58f, 0.44f, 0.24f));
-        panel.style.borderTopColor = borderColor;
-        panel.style.borderBottomColor = borderColor;
-        panel.style.borderLeftColor = borderColor;
-        panel.style.borderRightColor = borderColor;
-        panel.style.borderTopLeftRadius = 4;
-        panel.style.borderTopRightRadius = 4;
-        panel.style.borderBottomLeftRadius = 4;
-        panel.style.borderBottomRightRadius = 4;
+        panel.style.backgroundColor = new StyleColor(new Color(0.12f, 0.11f, 0.10f, 0.97f));
         backdrop.Add(panel);
 
         var titleBar = new VisualElement { name = "graphs-title" };
-        titleBar.style.height = 40;
+        titleBar.style.height = 36;
         titleBar.style.flexDirection = FlexDirection.Row;
         titleBar.style.justifyContent = Justify.SpaceBetween;
         titleBar.style.alignItems = Align.Center;
-        titleBar.style.paddingLeft = 14;
+        titleBar.style.paddingLeft = 12;
         titleBar.style.paddingRight = 6;
         titleBar.style.backgroundColor = new StyleColor(new Color(0.18f, 0.15f, 0.12f));
-        titleBar.style.borderBottomWidth = 1;
-        titleBar.style.borderBottomColor = borderColor;
 
         var title = new Label("Graphs");
         title.style.color = new Color(0.96f, 0.86f, 0.62f);
-        title.style.fontSize = 18;
+        title.style.fontSize = 16;
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
-        var closeBtn = NativeUi.CreateNineSliceButton("×", Close);
-        closeBtn.style.width = 30;
-        closeBtn.style.height = 30;
-        closeBtn.style.fontSize = 20;
+        var closeBtn = new Button(Close) { text = "×" };
+        closeBtn.style.width = 28;
+        closeBtn.style.height = 28;
+        closeBtn.style.fontSize = 18;
+        closeBtn.style.paddingTop = 0;
+        closeBtn.style.paddingBottom = 0;
         titleBar.Add(closeBtn);
 
         panel.Add(titleBar);
@@ -175,7 +156,7 @@ public sealed class GraphsWindow
         body.Add(chartSlot);
 
         var legendSlot = new VisualElement { name = "graphs-legend-slot" };
-        legendSlot.style.width = 300;
+        legendSlot.style.width = 320;
         legendSlot.style.marginRight = 10;
         legendSlot.style.marginTop = 10;
         legendSlot.style.marginBottom = 10;
@@ -184,12 +165,11 @@ public sealed class GraphsWindow
         body.Add(legendSlot);
 
         var bottom = new VisualElement { name = "graphs-bottom" };
-        bottom.style.height = 44;
+        bottom.style.height = 40;
         bottom.style.flexDirection = FlexDirection.Row;
         bottom.style.justifyContent = Justify.Center;
         bottom.style.alignItems = Align.Center;
-        bottom.style.borderTopWidth = 1;
-        bottom.style.borderTopColor = borderColor;
+        bottom.style.backgroundColor = new StyleColor(new Color(0.15f, 0.13f, 0.11f));
         bottom.Add(_rangeSelector.Build());
         panel.Add(bottom);
 

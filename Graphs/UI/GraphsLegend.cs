@@ -222,10 +222,7 @@ public sealed class GraphsLegend
         swatch.style.backgroundColor = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
         row.Add(swatch);
 
-        // Game's native styled checkbox (LocalizableToggle is internal, so
-        // instantiate via reflection). VisualElementInitializer on the window
-        // root then paints the checkbox sprite.
-        var toggle = NativeUi.CreateLocalizableToggle(VisibleMetricIds.Contains(def.Id));
+        var toggle = new Toggle { value = VisibleMetricIds.Contains(def.Id) };
         toggle.style.marginRight = 4;
         toggle.RegisterValueChangedCallback(evt =>
         {
