@@ -23,7 +23,10 @@ public class GraphsConfigurator : Configurator
         MultiBind<IMetricProvider>().To<PopulationMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<GoodsMetricProvider>().AsSingleton();
         MultiBind<IMetricProvider>().To<WellbeingMetricProvider>().AsSingleton();
-        MultiBind<IMetricProvider>().To<StatisticsMetricProvider>().AsSingleton();
+        // StatisticsMetricProvider kept in the codebase but not registered for
+        // now — bring back when we have persistence and an event-based counter
+        // that survives save/load.
+        // MultiBind<IMetricProvider>().To<StatisticsMetricProvider>().AsSingleton();
 
         // UI
         Bind<GameIcons>().AsSingleton();
