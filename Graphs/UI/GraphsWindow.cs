@@ -61,10 +61,14 @@ public sealed class GraphsWindow
         _document = _rootProvider.CreateEmpty("graphs-window-doc", SortOrder);
         _root = Build();
         _document.rootVisualElement.Add(_root);
-        // Native USS initialization deliberately skipped — LocalizableToggle
-        // and friends require paired loc keys that we don't supply, and the
-        // initializer was also stripping simple Image elements. Plain UIToolkit
-        // widgets with our own styling behave predictably.
+        // Apply game styles to the tree now that we only use plain UIToolkit
+        // widgets (Toggle/Button/ScrollView/DropdownField) — the initializer
+        // previously crashed on LocalizableToggle without a loc-key.
+        try { _elementInitializer.InitializeVisualElement(_root); }
+        catch (System.Exception ex)
+        {
+            UnityEngine.Debug.LogWarning($"[Graphs] native style init failed, falling back to raw UIToolkit: {ex.Message}");
+        }
 
         _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
