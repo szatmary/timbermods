@@ -46,28 +46,21 @@ public sealed class WellbeingMetricProvider : IMetricProvider
     {
         yield return new MetricDefinition(
             id: "wellbeing.avg",
-            nameLocKey: "Graphs.Metric.WellbeingAvg",
+            nameLocKey: "Graphs.Metric.Wellbeing",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
             valueFn: districtName => WalkWellbeing(districtName).Average);
 
         yield return new MetricDefinition(
-            id: "wellbeing.min",
-            nameLocKey: "Graphs.Metric.WellbeingMin",
-            category: MetricCategory.Wellbeing,
-            scope: MetricScope.District,
-            valueFn: districtName => WalkWellbeing(districtName).Min);
-
-        yield return new MetricDefinition(
             id: "need.hunger.avg",
-            nameLocKey: "Graphs.Metric.HungerAvg",
+            nameLocKey: "Graphs.Metric.Hunger",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
             valueFn: districtName => AverageSatisfaction(districtName, ResolveFoodNeedId()));
 
         yield return new MetricDefinition(
             id: "need.thirst.avg",
-            nameLocKey: "Graphs.Metric.ThirstAvg",
+            nameLocKey: "Graphs.Metric.Thirst",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
             valueFn: districtName => AverageSatisfaction(districtName, ResolveWaterNeedId()));
