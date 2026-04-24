@@ -171,4 +171,124 @@ public static class Overlays
         for (int i = 0; i < pool.Count; i++) weights[i] = pool[i].Weight;
         return pool[rng.WeightedPick(weights)];
     }
+
+    // ---------- Ruins (spec section 5.5) ----------
+
+    private static readonly Dictionary<Biome, float> RuinDensityBySector = new()
+    {
+        { Biome.Badland, 8f },
+        { Biome.Rocky,   3f },
+        { Biome.Meadow,  2f },
+        { Biome.Forest,  1f },
+    };
+
+    public static void PlaceRuins(MapData map, Catalog catalog, ref Rng rng)
+    {
+        if (catalog.Ruins.Count == 0) return;
+
+        var forbidden = BuildStartExclusionSet(map);
+
+        for (int my = 0; my < map.MetaHeight; my++)
+        for (int mx = 0; mx < map.MetaWidth; mx++)
+        {
+            var b = map.Biomes[map.MetaIndex(mx, my)];
+            if (!RuinDensityBySector.TryGetValue(b, out var density)) continue;
+            if (forbidden.Contains(new GridCoord(mx, my))) continue;
+
+            float expected = density * 64f / 256f;
+            int count = (int)MathF.Round(expected + (rng.NextFloat() - 0.5f));
+            for (int i = 0; i < count; i++)
+            {
+                int vx = mx * MetaSize + rng.NextRange(0, MetaSize);
+                int vy = my * MetaSize + rng.NextRange(0, MetaSize);
+                if (!IsPlaceableCell(map, vx, vy)) continue;
+                var entry = PickRuin(catalog.Ruins, ref rng);
+                int z = map.TopHeight(vx, vy) + 1;
+                map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                    new VoxelCoord(vx, vy, z),
+                    RandomOrientation(ref rng), EntityKind.Ruin));
+            }
+        }
+    }
+
+    public static void PlaceBlockages(MapData map, Catalog catalog, ref Rng rng)
+    {
+        if (!catalog.BlockObjects.TryGetValue("blockage", out var entry)) return;
+        int ruinCount = 0;
+        foreach (var e in map.Entities) if (e.Kind == EntityKind.Ruin) ruinCount++;
+        int blockCount = Math.Max(0, ruinCount / 3);
+
+        var ruinPositions = new List<GridCoord>();
+        foreach (var e in map.Entities)
+            if (e.Kind == EntityKind.Ruin)
+                ruinPositions.Add(new GridCoord(e.Coord.X, e.Coord.Y));
+
+        for (int i = 0; i < blockCount && ruinPositions.Count > 0; i++)
+        {
+            var anchor = ruinPositions[rng.NextRange(0, ruinPositions.Count)];
+            int vx = anchor.X + rng.NextRange(-2, 3);
+            int vy = anchor.Y + rng.NextRange(-2, 3);
+            if (!IsPlaceableCell(map, vx, vy)) continue;
+            int z = map.TopHeight(vx, vy) + 1;
+            map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                new VoxelCoord(vx, vy, z),
+                RandomOrientation(ref rng), EntityKind.Blockage));
+        }
+    }
+
+    public static void PlaceRelics(MapData map, Catalog catalog, ref Rng rng)
+    {
+        if (!catalog.BlockObjects.TryGetValue("relic", out var entry)) return;
+        int area = map.Width * map.Height;
+        int count = (int)MathF.Round(area / 25000f) + 1;
+        var ruinPositions = new List<GridCoord>();
+        foreach (var e in map.Entities)
+            if (e.Kind == EntityKind.Ruin)
+                ruinPositions.Add(new GridCoord(e.Coord.X, e.Coord.Y));
+
+        for (int i = 0; i < count; i++)
+        {
+            int vx, vy;
+            if (ruinPositions.Count > 0 && rng.NextFloat() < 0.7f)
+            {
+                var anchor = ruinPositions[rng.NextRange(0, ruinPositions.Count)];
+                vx = anchor.X + rng.NextRange(-3, 4);
+                vy = anchor.Y + rng.NextRange(-3, 4);
+            }
+            else
+            {
+                vx = rng.NextRange(0, map.Width);
+                vy = rng.NextRange(0, map.Height);
+            }
+            if (!IsPlaceableCell(map, vx, vy)) continue;
+            int z = map.TopHeight(vx, vy) + 1;
+            map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                new VoxelCoord(vx, vy, z), Orientation.North, EntityKind.Relic));
+        }
+    }
+
+    // ---------- Shared helpers ----------
+
+    private static HashSet<GridCoord> BuildStartExclusionSet(MapData map)
+    {
+        var ex = new HashSet<GridCoord>();
+        if (!map.StartMeta.HasValue) return ex;
+        var sm = map.StartMeta.Value;
+        ex.Add(sm);
+        if (sm.X > 0) ex.Add(new GridCoord(sm.X - 1, sm.Y));
+        if (sm.X + 1 < map.MetaWidth) ex.Add(new GridCoord(sm.X + 1, sm.Y));
+        if (sm.Y > 0) ex.Add(new GridCoord(sm.X, sm.Y - 1));
+        if (sm.Y + 1 < map.MetaHeight) ex.Add(new GridCoord(sm.X, sm.Y + 1));
+        return ex;
+    }
+
+    private static RuinCatalogEntry PickRuin(IReadOnlyList<RuinCatalogEntry> ruins, ref Rng rng)
+    {
+        var weights = new float[ruins.Count];
+        for (int i = 0; i < ruins.Count; i++) weights[i] = ruins[i].Weight;
+        return ruins[rng.WeightedPick(weights)];
+    }
+
+    private static Orientation RandomOrientation(ref Rng rng) =>
+        (Orientation)rng.NextRange(0, 4);
 }
