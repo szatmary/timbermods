@@ -41,7 +41,7 @@ public static class AccessValidation
                 if (nh != curH)
                 {
                     byte wd = map.WaterDepths[map.ColumnIndex(nx, ny)];
-                    if (wd > 0 && wd <= 2 && nh + wd == curH + 1)
+                    if (wd > 0 && nh + wd == curH + 1)
                     {
                         report.WaterAccessCount++;
                         continue;
@@ -64,6 +64,11 @@ public static class AccessValidation
             var cell = new GridCoord(e.Coord.X, e.Coord.Y);
             if (!report.Cells.Contains(cell)) continue;
             if (e.Kind == EntityKind.Tree) report.TreeCount++;
+            else if (e.Kind == EntityKind.WaterSource || e.Kind == EntityKind.BadwaterSource)
+            {
+                // A water source entity in the reachable area satisfies water access.
+                report.WaterAccessCount++;
+            }
             else if (e.Kind == EntityKind.Resource)
             {
                 report.ResourceCount++;
@@ -99,6 +104,17 @@ public static class AccessValidation
                 if (e.Coord.X == c.X && e.Coord.Y == c.Y) { occupied = true; break; }
             }
             if (!occupied && Overlays.IsPlaceableCell(map, c.X, c.Y)) empty.Add(c);
+        }
+
+        // Guarantee at least one water source in the reachable area.
+        if (report.WaterAccessCount < 1 && empty.Count > 0)
+        {
+            var c = empty[rng.NextRange(0, empty.Count)];
+            empty.Remove(c);
+            int z = map.TopHeight(c.X, c.Y) + 1;
+            map.Entities.Add(new PlacedEntity("WaterSource.Water",
+                new VoxelCoord(c.X, c.Y, z), Orientation.North, EntityKind.WaterSource, 1.2f));
+            report.WaterAccessCount++;
         }
 
         while (report.TreeCount < 30 && empty.Count > 0)
