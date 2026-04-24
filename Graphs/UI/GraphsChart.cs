@@ -28,12 +28,13 @@ public sealed class GraphsChart
     private Label? _tooltipHeader;
     private readonly System.Collections.Generic.List<Label> _tooltipRows = new();
 
-    // Per-metric icon that sits in the gutter on the right edge of the chart
-    // next to the latest sample's y. Built lazily on first update; positioned
-    // on every repaint trigger.
+    // Per-metric icon + value label that sit in the gutter on the right edge
+    // of the chart next to the latest sample's y. Built lazily on first
+    // update; positioned on every repaint trigger.
     private const float EndIconSize = 18f;
     private const float GutterWidth = EndIconSize + 6f; // icon + padding
     private readonly System.Collections.Generic.Dictionary<string, Image> _endIcons = new();
+    private readonly System.Collections.Generic.Dictionary<string, Label> _endLabels = new();
 
     public GraphsChart(
         MetricSampler sampler,
@@ -235,6 +236,28 @@ public sealed class GraphsChart
                 img.style.left = gutterX;
                 img.style.top = centerY - EndIconSize / 2f;
 
+                // Companion value label sits just below the icon in the gutter.
+                if (!_endLabels.TryGetValue(c.Def.Id, out var vlabel))
+                {
+                    vlabel = new Label("") { pickingMode = PickingMode.Ignore };
+                    vlabel.style.position = Position.Absolute;
+                    vlabel.style.fontSize = 10;
+                    vlabel.style.color = new Color(0.92f, 0.86f, 0.72f);
+                    vlabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    vlabel.style.width = GutterWidth;
+                    vlabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+                    _element.Add(vlabel);
+                    _endLabels[c.Def.Id] = vlabel;
+                }
+                int idx = _registry.IndexOf(c.Def.Id);
+                float v = idx >= 0 ? history.ReadValue(last, idx) : float.NaN;
+                vlabel.text = float.IsNaN(v)
+                    ? "—"
+                    : v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                vlabel.style.display = DisplayStyle.Flex;
+                vlabel.style.left = gutterX - (GutterWidth - EndIconSize) / 2f;
+                vlabel.style.top = centerY + EndIconSize / 2f;
+
                 stillVisible.Add(c.Def.Id);
             }
             i0 = i1 + 1;
@@ -243,11 +266,15 @@ public sealed class GraphsChart
         foreach (var (id, img) in _endIcons)
             if (!stillVisible.Contains(id))
                 img.style.display = DisplayStyle.None;
+        foreach (var (id, lbl) in _endLabels)
+            if (!stillVisible.Contains(id))
+                lbl.style.display = DisplayStyle.None;
     }
 
     private void HideAllEndIcons()
     {
         foreach (var kv in _endIcons) kv.Value.style.display = DisplayStyle.None;
+        foreach (var kv in _endLabels) kv.Value.style.display = DisplayStyle.None;
     }
 
     /// Refreshes the vertical cursor line and tooltip panel for the current

@@ -290,13 +290,9 @@ public sealed class GraphsLegend
         name.style.fontSize = 12;
         row.Add(name);
 
-        var value = new Label("—");
-        value.style.color = new Color(0.80f, 0.80f, 0.80f);
-        value.style.fontSize = 12;
-        value.style.minWidth = 52;
-        value.style.unityTextAlign = TextAnchor.MiddleRight;
-        _valueLabels[def.Id] = value;
-        row.Add(value);
+        // Current-value label lives on the chart's gutter icon now, not in
+        // the legend row. Registry entry kept empty so UpdateCurrentValues
+        // remains a no-op for this metric.
 
         return row;
     }
