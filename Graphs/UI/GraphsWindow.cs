@@ -137,10 +137,16 @@ public sealed class GraphsWindow : IPanelController
         panel.Add(contentMargin);
 
         // Title bar holds only the close X — no title text per user pref.
+        // Explicit flex-shrink 0 so the row below can't push it off, and
+        // explicit height so legendSlot's dropdown (which has its own
+        // popup/arrow region) can't creep upward into it.
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.flexDirection = FlexDirection.Row;
         titleBar.style.justifyContent = Justify.FlexEnd;
         titleBar.style.alignItems = Align.Center;
+        titleBar.style.height = 40;
+        titleBar.style.flexShrink = 0;
+        titleBar.style.marginBottom = 6;
 
         var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
