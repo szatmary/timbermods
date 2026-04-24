@@ -28,10 +28,11 @@ public sealed class GraphsChart
     private Label? _tooltipHeader;
     private readonly System.Collections.Generic.List<Label> _tooltipRows = new();
 
-    // Per-metric icon that sits at the right edge of the chart next to the
-    // latest sample's y. Built lazily on first update; positioned on every
-    // repaint trigger.
+    // Per-metric icon that sits in the gutter on the right edge of the chart
+    // next to the latest sample's y. Built lazily on first update; positioned
+    // on every repaint trigger.
     private const float EndIconSize = 18f;
+    private const float GutterWidth = EndIconSize + 6f; // icon + padding
     private readonly System.Collections.Generic.Dictionary<string, Image> _endIcons = new();
 
     public GraphsChart(
@@ -125,6 +126,7 @@ public sealed class GraphsChart
 
         var rect = _element.contentRect;
         if (rect.width <= 0 || rect.height <= 0) { HideAllEndIcons(); return; }
+        var draw = DrawArea(rect);
 
         var history = _sampler.History;
         if (history.Count == 0) { HideAllEndIcons(); return; }
@@ -157,11 +159,11 @@ public sealed class GraphsChart
         }
 
         const float topInset = 6f;
-        float innerTop = rect.y + topInset;
-        float innerBottom = rect.y + rect.height;
+        float innerTop = draw.y + topInset;
+        float innerBottom = draw.y + draw.height;
         float innerHeight = innerBottom - innerTop;
 
-        // First pass: gather all candidate icons with their preferred y.
+        // Gather candidates with their preferred y anchored to the line end.
         var candidates = new System.Collections.Generic.List<(MetricDefinition Def, float Y, Sprite Sprite)>();
         int last = endIdx - 1;
 
@@ -183,62 +185,64 @@ public sealed class GraphsChart
             candidates.Add((def, y, sprite));
         }
 
-        // Resolve overlaps by greedy left-shift. Sort by y so pairs overlapping
-        // vertically are processed together. When a new icon's bounding box
-        // collides with any already-placed icon, shift the new one left by
-        // one icon-width-plus-gap until it no longer collides. The icon stays
-        // on the same horizontal line of y, so the connection to its line is
-        // preserved visually — just pushed inward from the right edge.
+        // Sort by y and chain into groups where each adjacent pair's preferred
+        // y differs by less than one icon height — those would overlap if
+        // placed at their natural positions.
         candidates.Sort((a, b) => a.Y.CompareTo(b.Y));
-        float baseX = rect.xMax - EndIconSize - 2;
-        const float stepX = EndIconSize + 2;
-        var placed = new System.Collections.Generic.List<(float X, float Y, string Id)>();
         var stillVisible = new System.Collections.Generic.HashSet<string>();
+        float gutterX = rect.xMax - GutterWidth + 3;
 
-        foreach (var c in candidates)
+        int i0 = 0;
+        while (i0 < candidates.Count)
         {
-            float x = baseX;
-            while (OverlapsAny(placed, x, c.Y) && x > rect.x + 2)
-                x -= stepX;
+            int i1 = i0;
+            while (i1 + 1 < candidates.Count &&
+                   candidates[i1 + 1].Y - candidates[i1].Y < EndIconSize)
+                i1++;
 
-            if (!_endIcons.TryGetValue(c.Def.Id, out var img))
-            {
-                img = new Image { sprite = c.Sprite, pickingMode = PickingMode.Ignore };
-                img.style.position = Position.Absolute;
-                img.style.width = EndIconSize;
-                img.style.height = EndIconSize;
-                _element.Add(img);
-                _endIcons[c.Def.Id] = img;
-            }
-            else
-            {
-                img.sprite = c.Sprite;
-            }
-            img.style.display = DisplayStyle.Flex;
-            img.style.left = x;
-            img.style.top = c.Y - EndIconSize / 2f;
+            int n = i1 - i0 + 1;
+            // Center the stack on the midpoint of the group's preferred y's;
+            // each icon's center offsets by IconSize from its neighbour,
+            // symmetrically around the group center. Single-icon groups keep
+            // their exact y.
+            float groupCenter = (candidates[i0].Y + candidates[i1].Y) * 0.5f;
+            float stackHeight = (n - 1) * EndIconSize;
+            float firstCenter = groupCenter - stackHeight * 0.5f;
 
-            placed.Add((x, c.Y, c.Def.Id));
-            stillVisible.Add(c.Def.Id);
+            for (int i = i0; i <= i1; i++)
+            {
+                var c = candidates[i];
+                float centerY = firstCenter + (i - i0) * EndIconSize;
+                // Keep icons inside the chart vertically.
+                centerY = Mathf.Clamp(centerY,
+                    draw.y + EndIconSize / 2f,
+                    draw.yMax - EndIconSize / 2f);
+
+                if (!_endIcons.TryGetValue(c.Def.Id, out var img))
+                {
+                    img = new Image { sprite = c.Sprite, pickingMode = PickingMode.Ignore };
+                    img.style.position = Position.Absolute;
+                    img.style.width = EndIconSize;
+                    img.style.height = EndIconSize;
+                    _element.Add(img);
+                    _endIcons[c.Def.Id] = img;
+                }
+                else
+                {
+                    img.sprite = c.Sprite;
+                }
+                img.style.display = DisplayStyle.Flex;
+                img.style.left = gutterX;
+                img.style.top = centerY - EndIconSize / 2f;
+
+                stillVisible.Add(c.Def.Id);
+            }
+            i0 = i1 + 1;
         }
 
         foreach (var (id, img) in _endIcons)
             if (!stillVisible.Contains(id))
                 img.style.display = DisplayStyle.None;
-    }
-
-    private static bool OverlapsAny(
-        System.Collections.Generic.List<(float X, float Y, string Id)> placed,
-        float x, float y)
-    {
-        for (int i = 0; i < placed.Count; i++)
-        {
-            var p = placed[i];
-            if (System.Math.Abs(p.X - x) < EndIconSize &&
-                System.Math.Abs(p.Y - y) < EndIconSize)
-                return true;
-        }
-        return false;
     }
 
     private void HideAllEndIcons()
@@ -261,6 +265,7 @@ public sealed class GraphsChart
 
         var rect = _element.contentRect;
         if (rect.width <= 0 || rect.height <= 0) { HideTooltip(); return; }
+        var draw = DrawArea(rect);
 
         var history = _sampler.History;
         if (history.Count == 0) { HideTooltip(); return; }
@@ -278,8 +283,9 @@ public sealed class GraphsChart
         float span = latestT - startT;
         if (span <= 0) { HideTooltip(); return; }
 
-        // Map cursor x back to a timestamp, then find the closest sample.
-        float fx = Mathf.Clamp01((_cursorLocal.x - rect.x) / rect.width);
+        // Map cursor x back to a timestamp — clamped within the drawing area,
+        // so cursor positions over the gutter resolve to the most recent sample.
+        float fx = Mathf.Clamp01((_cursorLocal.x - draw.x) / draw.width);
         float targetT = startT + fx * span;
         int nearest = startIdx;
         float nearestDelta = float.PositiveInfinity;
@@ -290,7 +296,7 @@ public sealed class GraphsChart
         }
 
         float sampleT = history.ReadTimestamp(nearest);
-        float sampleX = rect.x + ((sampleT - startT) / span) * rect.width;
+        float sampleX = draw.x + ((sampleT - startT) / span) * draw.width;
 
         _cursorLine.style.display = DisplayStyle.Flex;
         _cursorLine.style.left = sampleX;
@@ -334,10 +340,20 @@ public sealed class GraphsChart
         if (_tooltipBox != null) _tooltipBox.style.display = DisplayStyle.None;
     }
 
+    /// Inner drawing area (chart rect minus the right-side gutter where
+    /// line-end icons live). All drawing + sample→x mapping uses this.
+    private static Rect DrawArea(Rect contentRect)
+    {
+        float w = contentRect.width - GutterWidth;
+        if (w < 0) w = 0;
+        return new Rect(contentRect.x, contentRect.y, w, contentRect.height);
+    }
+
     private void Draw(MeshGenerationContext ctx)
     {
         var rect = ctx.visualElement.contentRect;
         if (rect.width <= 0 || rect.height <= 0) return;
+        var draw = DrawArea(rect);
 
         var history = _sampler.History;
         if (history.Count == 0) return;
@@ -345,8 +361,6 @@ public sealed class GraphsChart
         float latestTimestamp = history.ReadTimestamp(history.Count - 1);
         float earliestTimestamp = history.ReadTimestamp(0);
         float? lookback = _range.LookbackDays();
-        // When the buffer holds less data than the requested lookback, auto-zoom
-        // to what we have instead of cramming it at the right edge.
         float startTimestamp = lookback.HasValue
             ? System.Math.Max(latestTimestamp - lookback.Value, earliestTimestamp)
             : earliestTimestamp;
@@ -355,9 +369,9 @@ public sealed class GraphsChart
         int endIdx = history.Count;
         if (startIdx >= endIdx) return;
 
-        DrawWeatherBands(ctx, rect, history, startIdx, endIdx, startTimestamp, latestTimestamp);
-        DrawGridlines(ctx, rect);
-        DrawLines(ctx, rect, history, startIdx, endIdx, startTimestamp, latestTimestamp);
+        DrawWeatherBands(ctx, draw, history, startIdx, endIdx, startTimestamp, latestTimestamp);
+        DrawGridlines(ctx, draw);
+        DrawLines(ctx, draw, history, startIdx, endIdx, startTimestamp, latestTimestamp);
     }
 
     private static void DrawGridlines(MeshGenerationContext ctx, Rect rect)
