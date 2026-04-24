@@ -57,7 +57,11 @@ public sealed class GraphsWindow : IPanelController
     public void Open()
     {
         if (_isShown) return;
-        _panelStack.PushDialog(this);
+        // Push with the dim overlay but NOT lockSpeed — the game should keep
+        // ticking while the user watches the graph update live. The private
+        // Push overload is accessible because Timberborn.CoreUI is publicized
+        // for this mod.
+        _panelStack.Push(this, hideTop: false, showOverlay: true, isDialog: false, lockSpeed: false);
         _isShown = true;
 
         _sampler.OnSampled += RefreshValues;
