@@ -183,9 +183,12 @@ public sealed class GraphsWindow : IPanelController
 
         var bottom = new VisualElement { name = "graphs-bottom" };
         bottom.style.height = 40;
+        bottom.style.minHeight = 40;
+        bottom.style.flexShrink = 0;
         bottom.style.flexDirection = FlexDirection.Row;
         bottom.style.justifyContent = Justify.Center;
         bottom.style.alignItems = Align.Center;
+        bottom.style.marginTop = 6;
         bottom.Add(_rangeSelector.Build());
         contentMargin.Add(bottom);
 

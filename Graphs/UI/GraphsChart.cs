@@ -445,9 +445,9 @@ public sealed class GraphsChart
                 float norm = catMax > 0 ? v / catMax : 0f;
                 float y = innerBottom - norm * innerHeight;
 
-                FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
+                FillRect(ctx, new Rect(x - 1, y - 1, 2, 2), color);
                 if (havePrev)
-                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 1.5f);
+                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 1f);
                 prev = new Vector2(x, y);
                 havePrev = true;
             }
