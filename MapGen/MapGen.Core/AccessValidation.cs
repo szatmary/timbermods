@@ -8,19 +8,14 @@ public sealed class ReachabilityReport
     public HashSet<GridCoord> Cells { get; } = new();
     public int TreeCount { get; set; }
     public int ResourceCount { get; set; }
-    public int FolktailsFood { get; set; }
-    public int IronTeethFood { get; set; }
     public int WaterAccessCount { get; set; }
 
     public bool MeetsMinimums =>
-        TreeCount >= 30 && ResourceCount >= 15 &&
-        FolktailsFood >= 7 && IronTeethFood >= 7 &&
-        WaterAccessCount >= 1;
+        TreeCount >= 30 && ResourceCount >= 15 && WaterAccessCount >= 1;
 }
 
 public static class AccessValidation
 {
-    /// BFS from the start voxel using same-height + water-edge rules (spec §6).
     public static ReachabilityReport FloodFillReachable(MapData map, VoxelCoord start)
     {
         var report = new ReachabilityReport();
@@ -64,37 +59,16 @@ public static class AccessValidation
             var cell = new GridCoord(e.Coord.X, e.Coord.Y);
             if (!report.Cells.Contains(cell)) continue;
             if (e.Kind == EntityKind.Tree) report.TreeCount++;
+            else if (e.Kind == EntityKind.Resource) report.ResourceCount++;
             else if (e.Kind == EntityKind.WaterSource || e.Kind == EntityKind.BadwaterSource)
-            {
-                // A water source entity in the reachable area satisfies water access.
                 report.WaterAccessCount++;
-            }
-            else if (e.Kind == EntityKind.Resource)
-            {
-                report.ResourceCount++;
-                if (e.BlueprintKey.Contains("Folktails"))
-                {
-                    report.FolktailsFood++;
-                }
-                else if (e.BlueprintKey.Contains("IronTeeth"))
-                {
-                    report.IronTeethFood++;
-                }
-                else
-                {
-                    // "Both" species — counts for each faction independently.
-                    report.FolktailsFood++;
-                    report.IronTeethFood++;
-                }
-            }
         }
     }
 
-    /// Top-up repair: plant additional trees/resources in reachable cells
-    /// until the minimums are met. Runs after initial placement.
     public static void TopUp(MapData map, Catalog catalog, ReachabilityReport report, ref Rng rng)
     {
         if (report.MeetsMinimums) return;
+
         var empty = new List<GridCoord>();
         foreach (var c in report.Cells)
         {
@@ -106,56 +80,36 @@ public static class AccessValidation
             if (!occupied && Overlays.IsPlaceableCell(map, c.X, c.Y)) empty.Add(c);
         }
 
-        // Guarantee at least one water source in the reachable area.
-        if (report.WaterAccessCount < 1 && empty.Count > 0)
-        {
-            var c = empty[rng.NextRange(0, empty.Count)];
-            empty.Remove(c);
-            int z = map.TopHeight(c.X, c.Y) + 1;
-            map.Entities.Add(new PlacedEntity("WaterSource.Water",
-                new VoxelCoord(c.X, c.Y, z), Orientation.North, EntityKind.WaterSource, 1.2f));
-            report.WaterAccessCount++;
-        }
-
         while (report.TreeCount < 30 && empty.Count > 0)
         {
             var c = empty[rng.NextRange(0, empty.Count)];
             empty.Remove(c);
-            var tree = PickFirstMixed(catalog.Trees, ref rng);
-            if (tree == null) break;
+            if (catalog.Trees.Count == 0) break;
+            var tree = catalog.Trees[rng.NextRange(0, catalog.Trees.Count)];
             int z = map.TopHeight(c.X, c.Y) + 1;
             map.Entities.Add(new PlacedEntity(tree.BlueprintKey,
                 new VoxelCoord(c.X, c.Y, z), Orientation.North, EntityKind.Tree));
             report.TreeCount++;
         }
-        while ((report.FolktailsFood < 7 || report.IronTeethFood < 7 || report.ResourceCount < 15)
-               && empty.Count > 0)
+        while (report.ResourceCount < 15 && empty.Count > 0)
         {
             var c = empty[rng.NextRange(0, empty.Count)];
             empty.Remove(c);
-            bool needFolk = report.FolktailsFood < 7;
-            CatalogEntry? res = null;
-            foreach (var e in catalog.Resources)
-            {
-                if (needFolk && (e.Faction == Faction.Folktails || e.Faction == Faction.Both))
-                { res = e; break; }
-                if (!needFolk && (e.Faction == Faction.IronTeeth || e.Faction == Faction.Both))
-                { res = e; break; }
-            }
-            if (res == null) break;
+            if (catalog.Resources.Count == 0) break;
+            var res = catalog.Resources[rng.NextRange(0, catalog.Resources.Count)];
             int z = map.TopHeight(c.X, c.Y) + 1;
             map.Entities.Add(new PlacedEntity(res.BlueprintKey,
                 new VoxelCoord(c.X, c.Y, z), Orientation.North, EntityKind.Resource));
             report.ResourceCount++;
-            if (res.Faction == Faction.Folktails || res.Faction == Faction.Both) report.FolktailsFood++;
-            if (res.Faction == Faction.IronTeeth || res.Faction == Faction.Both) report.IronTeethFood++;
         }
-    }
-
-    private static CatalogEntry? PickFirstMixed(IReadOnlyList<CatalogEntry> src, ref Rng rng)
-    {
-        if (src.Count == 0) return null;
-        return src[rng.NextRange(0, src.Count)];
+        if (report.WaterAccessCount < 1 && empty.Count > 0)
+        {
+            var c = empty[rng.NextRange(0, empty.Count)];
+            int z = map.TopHeight(c.X, c.Y) + 1;
+            map.Entities.Add(new PlacedEntity("WaterSource",
+                new VoxelCoord(c.X, c.Y, z), Orientation.North, EntityKind.WaterSource, 1f));
+            report.WaterAccessCount++;
+        }
     }
 
     private static IEnumerable<(int X, int Y)> FourNeighbors(int x, int y, int w, int h)
