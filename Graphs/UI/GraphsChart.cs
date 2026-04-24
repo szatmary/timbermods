@@ -165,7 +165,9 @@ public sealed class GraphsChart
         float innerHeight = innerBottom - innerTop;
 
         // Gather candidates with their preferred y anchored to the line end.
-        var candidates = new System.Collections.Generic.List<(MetricDefinition Def, float Y, Sprite Sprite)>();
+        // Sprite may be null for metrics without a native icon — those render
+        // as a filled colored block in the gutter instead.
+        var candidates = new System.Collections.Generic.List<(MetricDefinition Def, float Y, Sprite? Sprite)>();
         int last = endIdx - 1;
 
         for (int m = 0; m < metrics.Count; m++)
@@ -180,10 +182,7 @@ public sealed class GraphsChart
             float norm = catMax > 0 ? v / catMax : 0f;
             float y = innerBottom - norm * innerHeight;
 
-            var sprite = _legend.ResolveIcon(def);
-            if (sprite == null) continue;
-
-            candidates.Add((def, y, sprite));
+            candidates.Add((def, y, _legend.ResolveIcon(def)));
         }
 
         // Sort by y and chain into groups where each adjacent pair's preferred
@@ -221,16 +220,25 @@ public sealed class GraphsChart
 
                 if (!_endIcons.TryGetValue(c.Def.Id, out var img))
                 {
-                    img = new Image { sprite = c.Sprite, pickingMode = PickingMode.Ignore };
+                    img = new Image { pickingMode = PickingMode.Ignore };
                     img.style.position = Position.Absolute;
                     img.style.width = EndIconSize;
                     img.style.height = EndIconSize;
                     _element.Add(img);
                     _endIcons[c.Def.Id] = img;
                 }
+                // Metrics without a native sprite (wellbeing / hunger / thirst)
+                // get a plain filled square in the metric's line color so they
+                // still have a readable gutter marker.
+                img.sprite = c.Sprite;
+                if (c.Sprite == null)
+                {
+                    var color = GraphColors.ColorFor(c.Def.Id, c.Def.Category);
+                    img.style.backgroundColor = new StyleColor(color);
+                }
                 else
                 {
-                    img.sprite = c.Sprite;
+                    img.style.backgroundColor = StyleKeyword.Null;
                 }
                 img.style.display = DisplayStyle.Flex;
                 img.style.left = gutterX;
