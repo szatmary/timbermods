@@ -1,18 +1,17 @@
 using Graphs.Metrics;
 using Timberborn.CoreUI;
-using Timberborn.RootProviders;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-/// Full-screen graphs window. Built on open, destroyed on close — no hidden
-/// visual tree sits in the scene when closed.
-public sealed class GraphsWindow
+/// Implements the game's canonical panel protocol (`IPanelController`) so
+/// that `PanelStack.PushDialog(this)` gives us the game's modal window
+/// shell — including backdrop, USS theme, Esc/Enter routing, and proper
+/// focus management. We never create our own UIDocument anymore.
+public sealed class GraphsWindow : IPanelController
 {
-    private const int SortOrder = 1000;
-
-    private readonly RootVisualElementProvider _rootProvider;
+    private readonly PanelStack _panelStack;
     private readonly VisualElementInitializer _elementInitializer;
     private readonly GraphsRangeSelector _rangeSelector;
     private readonly GraphsDistrictSelector _districtSelector;
@@ -21,13 +20,14 @@ public sealed class GraphsWindow
     private readonly MetricSampler _sampler;
     private readonly MetricRegistry _registry;
     private readonly DistrictFilter _filter;
-    private UIDocument? _document;
-    private VisualElement? _root;
 
-    public bool IsOpen => _root != null;
+    private VisualElement? _root;
+    private bool _isShown;
+
+    public bool IsOpen => _isShown;
 
     public GraphsWindow(
-        RootVisualElementProvider rootProvider,
+        PanelStack panelStack,
         VisualElementInitializer elementInitializer,
         GraphsRangeSelector rangeSelector,
         GraphsDistrictSelector districtSelector,
@@ -37,7 +37,7 @@ public sealed class GraphsWindow
         MetricRegistry registry,
         DistrictFilter filter)
     {
-        _rootProvider = rootProvider;
+        _panelStack = panelStack;
         _elementInitializer = elementInitializer;
         _rangeSelector = rangeSelector;
         _districtSelector = districtSelector;
@@ -50,24 +50,15 @@ public sealed class GraphsWindow
 
     public void Toggle()
     {
-        if (IsOpen) Close();
+        if (_isShown) Close();
         else Open();
     }
 
     public void Open()
     {
-        if (IsOpen) return;
-
-        _document = _rootProvider.CreateEmpty("graphs-window-doc", SortOrder);
-        _root = Build();
-        _document.rootVisualElement.Add(_root);
-        // Run the game's initializers: localizer, button clickability, UI
-        // sound, scrollbar setup. Safe now that every ILocalizableElement in
-        // the tree (LocalizableToggle) has its text-loc-key set before this
-        // runs. PanelSettings loaded by RootVisualElementProvider.CreateEmpty
-        // already has the game's themeStyleSheet, so USS custom properties
-        // (--background-image etc.) resolve for NineSliceBackground.
-        _elementInitializer.InitializeVisualElement(_root);
+        if (_isShown) return;
+        _panelStack.PushDialog(this);
+        _isShown = true;
 
         _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
@@ -76,19 +67,31 @@ public sealed class GraphsWindow
 
     public void Close()
     {
-        if (_root == null) return;
-
+        if (!_isShown) return;
         _sampler.OnSampled -= RefreshValues;
         _filter.Changed -= _chart.Repaint;
 
-        _root.RemoveFromHierarchy();
+        _panelStack.Pop(this);
+        _isShown = false;
         _root = null;
-        if (_document != null)
-        {
-            UnityEngine.Object.Destroy(_document.gameObject);
-            _document = null;
-        }
     }
+
+    // IPanelController: the panel stack calls this to get our visual tree.
+    public VisualElement GetPanel()
+    {
+        _root = Build();
+        _elementInitializer.InitializeVisualElement(_root);
+        return _root;
+    }
+
+    // IPanelController: Esc.
+    public void OnUICancelled()
+    {
+        Close();
+    }
+
+    // IPanelController: Enter — do nothing special, but signal we handled it.
+    public bool OnUIConfirmed() => false;
 
     private void RefreshValues()
     {
@@ -104,30 +107,24 @@ public sealed class GraphsWindow
 
     private VisualElement Build()
     {
-        var backdrop = new VisualElement { name = "graphs-backdrop" };
-        backdrop.style.position = Position.Absolute;
-        backdrop.style.left = 0; backdrop.style.right = 0;
-        backdrop.style.top = 0; backdrop.style.bottom = 0;
-        backdrop.style.backgroundColor = new StyleColor(new Color(0, 0, 0, 0.55f));
-        backdrop.style.justifyContent = Justify.Center;
-        backdrop.style.alignItems = Align.Center;
-
+        // The PanelStack's container already has the game's theme stylesheets
+        // attached, so LocalizableToggle, NineSliceButton, and game USS classes
+        // all style natively when we live inside it. We only build the content.
         var panel = new VisualElement { name = "graphs-panel" };
         panel.style.width = new Length(92, LengthUnit.Percent);
         panel.style.height = new Length(88, LengthUnit.Percent);
         panel.style.maxWidth = 1800;
         panel.style.maxHeight = 1200;
-        panel.style.backgroundColor = new StyleColor(new Color(0.12f, 0.11f, 0.10f, 0.97f));
-        backdrop.Add(panel);
+        panel.AddToClassList("panel-box");
+        panel.style.flexDirection = FlexDirection.Column;
 
         var titleBar = new VisualElement { name = "graphs-title" };
-        titleBar.style.height = 36;
         titleBar.style.flexDirection = FlexDirection.Row;
         titleBar.style.justifyContent = Justify.SpaceBetween;
         titleBar.style.alignItems = Align.Center;
         titleBar.style.paddingLeft = 12;
         titleBar.style.paddingRight = 6;
-        titleBar.style.backgroundColor = new StyleColor(new Color(0.18f, 0.15f, 0.12f));
+        titleBar.style.height = 36;
 
         var title = new Label("Graphs");
         title.style.color = new Color(0.96f, 0.86f, 0.62f);
@@ -135,9 +132,6 @@ public sealed class GraphsWindow
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
-        // Native close-X: NineSliceButton with the game's "close-button" USS
-        // class. The button's nine-sliced cross sprite is wired via USS custom
-        // properties (--background-image etc.) resolved from the themeStyleSheet.
         var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
         closeBtn.clicked += Close;
@@ -172,10 +166,9 @@ public sealed class GraphsWindow
         bottom.style.flexDirection = FlexDirection.Row;
         bottom.style.justifyContent = Justify.Center;
         bottom.style.alignItems = Align.Center;
-        bottom.style.backgroundColor = new StyleColor(new Color(0.15f, 0.13f, 0.11f));
         bottom.Add(_rangeSelector.Build());
         panel.Add(bottom);
 
-        return backdrop;
+        return panel;
     }
 }
