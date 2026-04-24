@@ -4,13 +4,10 @@ using System.Text.Json;
 
 namespace MapGen;
 
-public enum Faction : byte { Folktails, IronTeeth, Both }
-
 public class CatalogEntry
 {
     public string Key { get; set; } = "";
     public string BlueprintKey { get; set; } = "";
-    public Faction Faction { get; set; } = Faction.Both;
     public float Weight { get; set; } = 1f;
 }
 
@@ -31,8 +28,7 @@ public sealed class Catalog
     public static Catalog LoadFromDirectory(string dir)
     {
         var opt = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        opt.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-        var cat = new Catalog
+        return new Catalog
         {
             Trees = Read<List<CatalogEntry>>(Path.Combine(dir, "Trees.json"), opt),
             Resources = Read<List<CatalogEntry>>(Path.Combine(dir, "Resources.json"), opt),
@@ -40,7 +36,6 @@ public sealed class Catalog
             Ruins = Read<List<RuinCatalogEntry>>(Path.Combine(dir, "Ruins.json"), opt),
             BlockObjects = Read<Dictionary<string, CatalogEntry>>(Path.Combine(dir, "BlockObjects.json"), opt),
         };
-        return cat;
     }
 
     private static T Read<T>(string path, JsonSerializerOptions opt) where T : new()
