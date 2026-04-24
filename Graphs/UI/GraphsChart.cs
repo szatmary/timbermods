@@ -286,7 +286,7 @@ public sealed class GraphsChart
 
                 FillRect(ctx, new Rect(x - 2, y - 2, 4, 4), color);
                 if (havePrev)
-                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 3f);
+                    DrawSegment(ctx, prev, new Vector2(x, y), color, thickness: 1.5f);
                 prev = new Vector2(x, y);
                 havePrev = true;
             }
