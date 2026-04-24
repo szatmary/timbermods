@@ -314,9 +314,11 @@ public sealed class GraphsLegend
         ResolveDisplayName(def, out var icon);
         if (icon != null) return icon;
         // Thematic fallbacks for metrics without their own sprite: reuse
-        // a good icon that represents the underlying need.
+        // a good icon that represents the underlying need, or an existing
+        // beaver sprite for aggregate wellbeing.
         if (def.Id == "need.hunger.avg") return TryGoodIcon("Berries");
         if (def.Id == "need.thirst.avg") return TryGoodIcon("Water");
+        if (def.Id == "wellbeing.avg")   return _icons.TryGet("pop.total"); // ico-beavers
         return null;
     }
 

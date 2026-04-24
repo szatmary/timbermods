@@ -13,6 +13,10 @@ public sealed class GraphsChart
     private static readonly Color BadtideColor   = new(0.90f, 0.30f, 0.55f, 0.20f);
     private static readonly Color TemperateColor = new(0, 0, 0, 0);
 
+    // Fixed tint applied to every Wellbeing-category icon so the three
+    // metrics (wellbeing / hunger / thirst) read as a single thematic group.
+    private static readonly Color WellbeingTint = new(0.96f, 0.80f, 0.48f);
+
     private readonly MetricSampler _sampler;
     private readonly GraphsRangeSelector _range;
     private readonly MetricRegistry _registry;
@@ -32,6 +36,11 @@ public sealed class GraphsChart
     // of the chart next to the latest sample's y. Built lazily on first
     // update; positioned on every repaint trigger.
     private const float EndIconSize = 18f;
+    private const float EndLabelHeight = 14f;
+    // The combined vertical footprint of one marker (icon + value label
+    // beneath it). Used for overlap grouping + stacking step so the label
+    // of the upper marker never lands on top of the icon of the marker below.
+    private const float MarkerHeight = EndIconSize + EndLabelHeight;
     private const float GutterWidth = EndIconSize + 6f; // icon + padding
     private readonly System.Collections.Generic.Dictionary<string, Image> _endIcons = new();
     private readonly System.Collections.Generic.Dictionary<string, Label> _endLabels = new();
@@ -197,26 +206,25 @@ public sealed class GraphsChart
         {
             int i1 = i0;
             while (i1 + 1 < candidates.Count &&
-                   candidates[i1 + 1].Y - candidates[i1].Y < EndIconSize)
+                   candidates[i1 + 1].Y - candidates[i1].Y < MarkerHeight)
                 i1++;
 
             int n = i1 - i0 + 1;
             // Center the stack on the midpoint of the group's preferred y's;
-            // each icon's center offsets by IconSize from its neighbour,
-            // symmetrically around the group center. Single-icon groups keep
-            // their exact y.
+            // each marker's center offsets by MarkerHeight (icon + label)
+            // from its neighbour so labels never collide with icons below.
             float groupCenter = (candidates[i0].Y + candidates[i1].Y) * 0.5f;
-            float stackHeight = (n - 1) * EndIconSize;
+            float stackHeight = (n - 1) * MarkerHeight;
             float firstCenter = groupCenter - stackHeight * 0.5f;
 
             for (int i = i0; i <= i1; i++)
             {
                 var c = candidates[i];
-                float centerY = firstCenter + (i - i0) * EndIconSize;
-                // Keep icons inside the chart vertically.
+                float centerY = firstCenter + (i - i0) * MarkerHeight;
+                // Keep the whole marker (icon + label) inside chart bounds.
                 centerY = Mathf.Clamp(centerY,
                     draw.y + EndIconSize / 2f,
-                    draw.yMax - EndIconSize / 2f);
+                    draw.yMax - EndIconSize / 2f - EndLabelHeight);
 
                 if (!_endIcons.TryGetValue(c.Def.Id, out var img))
                 {
@@ -230,24 +238,21 @@ public sealed class GraphsChart
                 img.sprite = c.Sprite;
                 if (c.Sprite == null)
                 {
-                    // No sprite at all (e.g. wellbeing) — plain filled square
-                    // in the line color so the gutter still has a marker.
+                    // Fallback when no sprite resolves: plain filled square
+                    // in the line color.
                     var color = GraphColors.ColorFor(c.Def.Id, c.Def.Category);
                     img.style.backgroundColor = new StyleColor(color);
                     img.tintColor = Color.white;
                 }
                 else
                 {
-                    // Tint thematic-fallback sprites (like Berries for hunger)
-                    // with the metric's line color so the icon reads as "my
-                    // line's color" first, "a berry" second. Native metric
-                    // icons (pop/science/goods) pass their own colors through.
                     img.style.backgroundColor = StyleKeyword.Null;
-                    bool isFallback =
-                        c.Def.Id == "need.hunger.avg" ||
-                        c.Def.Id == "need.thirst.avg";
-                    img.tintColor = isFallback
-                        ? GraphColors.ColorFor(c.Def.Id, c.Def.Category)
+                    // Metrics in the Wellbeing category use a fixed category
+                    // tint (warm gold) across all three (wellbeing / hunger /
+                    // thirst) so they read as a group. Other metrics' icons
+                    // pass through with their natural game colors.
+                    img.tintColor = c.Def.Category == MetricCategory.Wellbeing
+                        ? WellbeingTint
                         : Color.white;
                 }
                 img.style.display = DisplayStyle.Flex;
