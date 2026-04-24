@@ -20,6 +20,14 @@ public sealed class GraphsChart
 
     private VisualElement? _element;
 
+    // Cursor-tracking state for the hover tooltip.
+    private Vector2 _cursorLocal;
+    private bool _cursorInside;
+    private VisualElement? _cursorLine;
+    private VisualElement? _tooltipBox;
+    private Label? _tooltipHeader;
+    private readonly System.Collections.Generic.List<Label> _tooltipRows = new();
+
     public GraphsChart(
         MetricSampler sampler,
         GraphsRangeSelector range,
@@ -41,10 +49,143 @@ public sealed class GraphsChart
         _range.Changed += () => _element?.MarkDirtyRepaint();
         _legend.Changed += () => _element?.MarkDirtyRepaint();
         _sampler.OnSampled += () => _element?.MarkDirtyRepaint();
+
+        // Hover tracking: a vertical cursor line + a floating tooltip panel.
+        _element.RegisterCallback<MouseMoveEvent>(e =>
+        {
+            _cursorLocal = (Vector2)e.localMousePosition;
+            _cursorInside = true;
+            RefreshTooltip();
+        });
+        _element.RegisterCallback<MouseLeaveEvent>(_ =>
+        {
+            _cursorInside = false;
+            HideTooltip();
+        });
+
+        _cursorLine = new VisualElement { name = "graphs-chart-cursor", pickingMode = PickingMode.Ignore };
+        _cursorLine.style.position = Position.Absolute;
+        _cursorLine.style.top = 0;
+        _cursorLine.style.bottom = 0;
+        _cursorLine.style.width = 1;
+        _cursorLine.style.backgroundColor = new StyleColor(new Color(1f, 1f, 1f, 0.35f));
+        _cursorLine.style.display = DisplayStyle.None;
+        _element.Add(_cursorLine);
+
+        _tooltipBox = new VisualElement { name = "graphs-chart-tooltip", pickingMode = PickingMode.Ignore };
+        _tooltipBox.style.position = Position.Absolute;
+        _tooltipBox.style.display = DisplayStyle.None;
+        _tooltipBox.style.backgroundColor = new StyleColor(new Color(0.08f, 0.07f, 0.06f, 0.94f));
+        _tooltipBox.style.borderTopLeftRadius = 4;
+        _tooltipBox.style.borderTopRightRadius = 4;
+        _tooltipBox.style.borderBottomLeftRadius = 4;
+        _tooltipBox.style.borderBottomRightRadius = 4;
+        _tooltipBox.style.paddingTop = 6;
+        _tooltipBox.style.paddingBottom = 6;
+        _tooltipBox.style.paddingLeft = 8;
+        _tooltipBox.style.paddingRight = 8;
+        _tooltipBox.style.minWidth = 160;
+
+        _tooltipHeader = new Label();
+        _tooltipHeader.style.color = new Color(0.96f, 0.86f, 0.62f);
+        _tooltipHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
+        _tooltipHeader.style.marginBottom = 4;
+        _tooltipBox.Add(_tooltipHeader);
+
+        _element.Add(_tooltipBox);
+
         return _element;
     }
 
     public void Repaint() => _element?.MarkDirtyRepaint();
+
+    /// Refreshes the vertical cursor line and tooltip panel for the current
+    /// pointer position. Picks the nearest sample to the cursor's x and lists
+    /// the visible metrics' values at that sample.
+    private void RefreshTooltip()
+    {
+        if (_element is null || _cursorLine is null || _tooltipBox is null || _tooltipHeader is null) return;
+
+        if (!_cursorInside)
+        {
+            HideTooltip();
+            return;
+        }
+
+        var rect = _element.contentRect;
+        if (rect.width <= 0 || rect.height <= 0) { HideTooltip(); return; }
+
+        var history = _sampler.History;
+        if (history.Count == 0) { HideTooltip(); return; }
+
+        float latestT = history.ReadTimestamp(history.Count - 1);
+        float earliestT = history.ReadTimestamp(0);
+        float? lookback = _range.LookbackDays();
+        float startT = lookback.HasValue
+            ? System.Math.Max(latestT - lookback.Value, earliestT)
+            : earliestT;
+        int startIdx = history.FindFirstAtOrAfter(startT);
+        int endIdx = history.Count;
+        if (startIdx >= endIdx) { HideTooltip(); return; }
+
+        float span = latestT - startT;
+        if (span <= 0) { HideTooltip(); return; }
+
+        // Map cursor x back to a timestamp, then find the closest sample.
+        float fx = Mathf.Clamp01((_cursorLocal.x - rect.x) / rect.width);
+        float targetT = startT + fx * span;
+        int nearest = startIdx;
+        float nearestDelta = float.PositiveInfinity;
+        for (int i = startIdx; i < endIdx; i++)
+        {
+            float d = Mathf.Abs(history.ReadTimestamp(i) - targetT);
+            if (d < nearestDelta) { nearestDelta = d; nearest = i; }
+        }
+
+        float sampleT = history.ReadTimestamp(nearest);
+        float sampleX = rect.x + ((sampleT - startT) / span) * rect.width;
+
+        _cursorLine.style.display = DisplayStyle.Flex;
+        _cursorLine.style.left = sampleX;
+
+        _tooltipHeader.text = $"Day {sampleT:0.00}";
+
+        // Rebuild the metric rows. Cheap enough; called on MouseMoveEvent only.
+        foreach (var lbl in _tooltipRows) _tooltipBox.Remove(lbl);
+        _tooltipRows.Clear();
+
+        var metrics = _registry.Metrics;
+        for (int m = 0; m < metrics.Count; m++)
+        {
+            var def = metrics[m];
+            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+            float v = history.ReadValue(nearest, m);
+            string vs = float.IsNaN(v) ? "—" : v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            var row = new Label($"{def.NameLocKey}: {vs}");
+            row.style.color = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
+            row.style.fontSize = 11;
+            _tooltipBox.Add(row);
+            _tooltipRows.Add(row);
+        }
+
+        _tooltipBox.style.display = DisplayStyle.Flex;
+
+        // Position the tooltip to the right of the cursor when possible;
+        // flip left when near the right edge.
+        const float offset = 10f;
+        const float tooltipWidth = 200f;
+        float tooltipX = sampleX + offset;
+        if (tooltipX + tooltipWidth > rect.xMax) tooltipX = sampleX - offset - tooltipWidth;
+        if (tooltipX < rect.x) tooltipX = rect.x + 4;
+        _tooltipBox.style.left = tooltipX;
+        _tooltipBox.style.top = Mathf.Max(4, _cursorLocal.y - 10);
+    }
+
+    private void HideTooltip()
+    {
+        if (_cursorLine != null) _cursorLine.style.display = DisplayStyle.None;
+        if (_tooltipBox != null) _tooltipBox.style.display = DisplayStyle.None;
+    }
 
     private void Draw(MeshGenerationContext ctx)
     {

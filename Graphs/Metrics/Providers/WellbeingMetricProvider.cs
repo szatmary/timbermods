@@ -51,19 +51,32 @@ public sealed class WellbeingMetricProvider : IMetricProvider
             scope: MetricScope.District,
             valueFn: districtName => WalkWellbeing(districtName).Average);
 
+        // Hunger / thirst are inverted at the provider: we plot "unmet need"
+        // rather than "satisfaction", so a rising line means beavers are
+        // getting hungrier/thirstier — matches how bad things usually read
+        // on charts (worse = higher).
         yield return new MetricDefinition(
             id: "need.hunger.avg",
             nameLocKey: "Graphs.Metric.Hunger",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
-            valueFn: districtName => AverageSatisfaction(districtName, ResolveFoodNeedId()));
+            valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveFoodNeedId())));
 
         yield return new MetricDefinition(
             id: "need.thirst.avg",
             nameLocKey: "Graphs.Metric.Thirst",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
-            valueFn: districtName => AverageSatisfaction(districtName, ResolveWaterNeedId()));
+            valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveWaterNeedId())));
+    }
+
+    private static float Invert(float satisfaction)
+    {
+        // NaN stays NaN; otherwise clamp to [0,1] and flip.
+        if (float.IsNaN(satisfaction)) return float.NaN;
+        if (satisfaction < 0) satisfaction = 0;
+        if (satisfaction > 1) satisfaction = 1;
+        return 1f - satisfaction;
     }
 
     private readonly struct WellbeingWalk
