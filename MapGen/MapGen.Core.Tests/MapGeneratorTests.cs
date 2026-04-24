@@ -38,6 +38,31 @@ public class MapGeneratorTests
         Assert.Equal(64, result.Map!.Width);
     }
 
+    [Fact]
+    public void SeedSweep_100_seeds_on_128x128_all_succeed()
+    {
+        var gen = new MapGenerator(EmptyCatalog());
+        int successes = 0;
+        for (uint s = 0; s < 100; s++)
+        {
+            var result = gen.Generate(new GenerationConfig { Width = 128, Height = 128, Seed = s });
+            if (result.Status == GenerationStatus.Success) successes++;
+        }
+        Assert.True(successes >= 95, $"Only {successes}/100 seeds succeeded.");
+    }
+
+    [Fact]
+    public void SeedSweep_various_sizes()
+    {
+        var gen = new MapGenerator(EmptyCatalog());
+        int[] sizes = { 64, 128, 192, 256 };
+        foreach (var size in sizes)
+        {
+            var result = gen.Generate(new GenerationConfig { Width = size, Height = size, Seed = 1 });
+            Assert.Equal(GenerationStatus.Success, result.Status);
+        }
+    }
+
     public static Catalog EmptyCatalog()
     {
         return new Catalog
