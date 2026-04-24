@@ -107,15 +107,16 @@ public sealed class GraphsWindow : IPanelController
 
     private VisualElement Build()
     {
-        // The PanelStack's container already has the game's theme stylesheets
-        // attached, so LocalizableToggle, NineSliceButton, and game USS classes
-        // all style natively when we live inside it. We only build the content.
-        var panel = new VisualElement { name = "graphs-panel" };
+        // Chrome uses NineSliceVisualElement with the game's .sliced-border
+        // classes — same pattern as Core/DialogBox.uxml. Gives us the nine-
+        // sliced wooden frame background that matches other in-game dialogs.
+        var panel = new NineSliceVisualElement { name = "graphs-panel" };
+        panel.AddToClassList("sliced-border");
+        panel.AddToClassList("sliced-border--nontransparent");
         panel.style.width = new Length(92, LengthUnit.Percent);
         panel.style.height = new Length(88, LengthUnit.Percent);
         panel.style.maxWidth = 1800;
         panel.style.maxHeight = 1200;
-        panel.AddToClassList("panel-box");
         panel.style.flexDirection = FlexDirection.Column;
 
         var titleBar = new VisualElement { name = "graphs-title" };
