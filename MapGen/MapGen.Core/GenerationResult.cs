@@ -8,12 +8,12 @@ public sealed class GenerationResult
 {
     public GenerationStatus Status { get; }
     public MapData? Map { get; }
-    public uint ActualSeedUsed { get; }
+    public string ActualSeedUsed { get; }
     public int RetryCount { get; }
     public IReadOnlyList<string> Log { get; }
     public string? FailureReason { get; }
 
-    public GenerationResult(GenerationStatus status, MapData? map, uint actualSeed,
+    public GenerationResult(GenerationStatus status, MapData? map, string actualSeed,
         int retries, IReadOnlyList<string> log, string? failureReason = null)
     {
         Status = status;

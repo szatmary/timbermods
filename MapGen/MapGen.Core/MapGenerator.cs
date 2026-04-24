@@ -17,7 +17,7 @@ public sealed class MapGenerator
         var log = new List<string>();
         for (int attempt = 0; attempt <= config.PipelineRetryBudget; attempt++)
         {
-            uint effectiveSeed = config.Seed + (uint)attempt;
+            string effectiveSeed = attempt == 0 ? config.Seed : $"{config.Seed}-{attempt}";
             var result = TryGenerate(config, effectiveSeed, log);
             if (result != null)
                 return new GenerationResult(GenerationStatus.Success, result, effectiveSeed, attempt, log);
@@ -26,7 +26,7 @@ public sealed class MapGenerator
             "Failed to produce a playable map within retry budget.");
     }
 
-    private MapData? TryGenerate(GenerationConfig config, uint seed, List<string> log)
+    private MapData? TryGenerate(GenerationConfig config, string seed, List<string> log)
     {
         var rng = new Rng(seed);
         var map = new MapData(config.Width, config.Height, seed);
@@ -36,25 +36,19 @@ public sealed class MapGenerator
         for (int i = 0; i < map.Columns.Length; i++) map.Columns[i] = new List<VoxelSpan>();
         map.WaterDepths = new byte[config.Width * config.Height];
 
-        // --- Biome WFC ---
         var biomes = BiomeGrid.Solve(map.MetaWidth, map.MetaHeight, ref rng);
         if (biomes == null) { log.Add($"seed={seed}: WFC contradiction"); return null; }
         BiomeGrid.RewriteEdgeCraters(biomes, map.MetaWidth, map.MetaHeight);
         map.Biomes = biomes;
 
-        // --- Start selection ---
         var pick = StartSelection.Pick(biomes, map.MetaWidth, map.MetaHeight, ref rng);
         if (pick == null) { log.Add($"seed={seed}: no valid Start"); return null; }
         StartSelection.Apply(biomes, map.MetaWidth, pick.Value);
         map.StartMeta = pick.Value;
 
-        // --- Heightmap ---
         Heightmap.Build(map, ref rng);
-
-        // --- Hydrology ---
         Hydrology.Build(map, ref rng);
 
-        // --- Overlays ---
         Overlays.PlaceTrees(map, _catalog, ref rng);
         Overlays.PlaceResources(map, _catalog, ref rng);
         Overlays.PlaceThorns(map, _catalog, ref rng);
@@ -65,7 +59,6 @@ public sealed class MapGenerator
         Overlays.PlaceGeothermalVents(map, _catalog, ref rng);
         Overlays.PlaceStartMarker(map, _catalog);
 
-        // --- Access validation ---
         if (!map.StartMeta.HasValue) { log.Add($"seed={seed}: StartMeta missing"); return null; }
         var sm = map.StartMeta.Value;
         int sx = sm.X * config.MetaCellSize + config.MetaCellSize / 2;
@@ -77,7 +70,7 @@ public sealed class MapGenerator
             AccessValidation.TopUp(map, _catalog, report, ref rng);
             if (!report.MeetsMinimums)
             {
-                log.Add($"seed={seed}: minimums unmet (trees={report.TreeCount} resources={report.ResourceCount} folk={report.FolktailsFood} it={report.IronTeethFood} water={report.WaterAccessCount})");
+                log.Add($"seed={seed}: minimums unmet (trees={report.TreeCount} food={report.ResourceCount})");
                 return null;
             }
         }

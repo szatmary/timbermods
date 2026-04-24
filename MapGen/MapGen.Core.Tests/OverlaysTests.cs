@@ -58,7 +58,7 @@ public class OverlaysTests
     private static MapData MakePreparedMap(int w, int h, out Rng rng, Biome? uniformBiome = Biome.Meadow)
     {
         rng = new Rng(42u);
-        var map = new MapData(w, h, 1u);
+        var map = new MapData(w, h, "1");
         map.MetaWidth = w / 8;
         map.MetaHeight = h / 8;
         map.Biomes = new Biome[map.MetaWidth * map.MetaHeight];

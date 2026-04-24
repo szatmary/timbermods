@@ -6,7 +6,7 @@ namespace MapGen;
 /// All arrays are sized up-front in MapGenerator before any stage runs.
 public sealed class MapData
 {
-    public MapData(int width, int height, uint seed)
+    public MapData(int width, int height, string seed)
     {
         Width = width;
         Height = height;
@@ -15,7 +15,7 @@ public sealed class MapData
 
     public int Width { get; }
     public int Height { get; }
-    public uint Seed { get; }
+    public string Seed { get; }
 
     /// Metacell biome grid. Size: MetaWidth * MetaHeight. Indexed by
     /// metacell coords: `Biomes[mx + my * MetaWidth]`.

@@ -17,7 +17,7 @@ public class AccessValidationTests
 
     private static MapData FlatMapWithCliff()
     {
-        var map = new MapData(32, 32, 1u);
+        var map = new MapData(32, 32, "1");
         map.MetaWidth = 4; map.MetaHeight = 4;
         map.Biomes = new Biome[16];
         for (int i = 0; i < 16; i++) map.Biomes[i] = Biome.Meadow;

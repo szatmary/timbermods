@@ -51,7 +51,7 @@ public class HeightmapTests
 
     private static MapData MakeBareMap(int w, int h, Biome seedBiomes)
     {
-        var map = new MapData(w, h, 1u);
+        var map = new MapData(w, h, "1");
         map.MetaWidth = w / 8;
         map.MetaHeight = h / 8;
         map.Biomes = new Biome[map.MetaWidth * map.MetaHeight];

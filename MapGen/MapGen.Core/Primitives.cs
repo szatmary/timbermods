@@ -2,16 +2,28 @@ using System;
 
 namespace MapGen;
 
-/// Deterministic, reseedable RNG. xorshift32 — cheap, predictable, no
-/// dependency on .NET's System.Random (which differs between runtimes).
 public struct Rng
 {
     private uint _state;
 
     public Rng(uint seed)
     {
-        // 0 is a fixed point of xorshift; ensure we never start there.
         _state = seed == 0u ? 0x9E3779B9u : seed;
+    }
+
+    public Rng(string seed) : this(HashSeed(seed)) { }
+
+    /// FNV-1a 32-bit hash. Same string → same uint, regardless of runtime.
+    public static uint HashSeed(string seed)
+    {
+        if (string.IsNullOrEmpty(seed)) return 0x9E3779B9u;
+        uint h = 2166136261u;
+        for (int i = 0; i < seed.Length; i++)
+        {
+            h ^= seed[i];
+            h *= 16777619u;
+        }
+        return h;
     }
 
     public uint NextUInt()
@@ -24,20 +36,16 @@ public struct Rng
         return x;
     }
 
-    /// Returns a float in [0, 1).
     public float NextFloat() => (NextUInt() & 0x00FFFFFFu) / (float)(1 << 24);
 
-    /// Returns an int in [min, max).
     public int NextRange(int min, int max)
     {
         if (max <= min) return min;
         return min + (int)(NextUInt() % (uint)(max - min));
     }
 
-    /// Returns true with the given probability (0..1).
     public bool NextBool(float probability) => NextFloat() < probability;
 
-    /// Weighted pick: indices[i] has weight weights[i]. Returns i.
     public int WeightedPick(float[] weights)
     {
         float total = 0f;

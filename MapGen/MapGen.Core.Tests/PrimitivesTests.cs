@@ -51,4 +51,29 @@ public class PrimitivesTests
         var s = new VoxelSpan(0, 5);
         Assert.Equal(5, s.Height);
     }
+
+    [Fact]
+    public void Rng_string_seed_deterministic()
+    {
+        var a = new Rng("HELLO");
+        var b = new Rng("HELLO");
+        for (int i = 0; i < 5; i++)
+            Assert.Equal(a.NextUInt(), b.NextUInt());
+    }
+
+    [Fact]
+    public void Rng_different_string_seeds_diverge()
+    {
+        var a = new Rng("ABC");
+        var b = new Rng("XYZ");
+        Assert.NotEqual(a.NextUInt(), b.NextUInt());
+    }
+
+    [Fact]
+    public void Rng_empty_string_uses_fallback()
+    {
+        var r = new Rng("");
+        var v = r.NextUInt();
+        Assert.True(v != 0u);
+    }
 }
