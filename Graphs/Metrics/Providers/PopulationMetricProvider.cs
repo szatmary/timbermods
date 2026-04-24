@@ -37,11 +37,7 @@ public sealed class PopulationMetricProvider : IMetricProvider
         yield return FromData("pop.total",  "Graphs.Metric.Total",  d => d.TotalPopulation, "Population");
         yield return FromData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults,   "Population");
         yield return FromData("pop.kits",   "Graphs.Metric.Kits",   d => d.NumberOfChildren, "Population");
-        // Bots get their own legend category, but share the Population chart
-        // scale so bot counts can be compared visually against beaver counts.
-        yield return InCategory(MetricCategory.Bots,
-            "pop.bots", "Graphs.Metric.Bots", d => d.NumberOfBots,
-            subGroup: null, scaleGroup: nameof(MetricCategory.Population));
+        yield return FromData("pop.bots",   "Graphs.Metric.Bots",   d => d.NumberOfBots,     "Population");
 
         // Quarters (beds)
         yield return FromData("pop.homeless",      "Graphs.Metric.Homeless",     d => d.BedData.Homeless,     "Quarters");
