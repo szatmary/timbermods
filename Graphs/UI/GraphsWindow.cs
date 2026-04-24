@@ -81,6 +81,10 @@ public sealed class GraphsWindow : IPanelController
     {
         _root = Build();
         _elementInitializer.InitializeVisualElement(_root);
+        // Localizer populated every LocalizableToggle's text with the loc
+        // value of "Graphs.Empty"; clear the inline labels so each row's
+        // real name (in a sibling Label) is what shows.
+        _root.Query<LocalizableToggle>().ForEach(t => t.text = string.Empty);
         return _root;
     }
 
