@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Timberborn.GameDistricts;
 using Timberborn.Goods;
 using Timberborn.ResourceCountingSystem;
@@ -11,13 +10,15 @@ namespace Graphs.Metrics.Providers;
 
 /// Registers one metric per good id. Uses the game's own
 /// `ResourceCountingService` which aggregates stock across every source
-/// (stockpiles, carried goods, output buffers, ground piles) — the same
-/// total the game's top-bar resource widgets show.
+/// (stockpiles, carried goods, output buffers, ground piles) — matches
+/// what the game's top-bar resource widgets show.
 public sealed class GoodsMetricProvider : IMetricProvider
 {
     private readonly IGoodService _goodService;
     private readonly ResourceCountingService _resourceCounting;
     private readonly DistrictCenterRegistry _districts;
+
+    private static bool _loggedFailure;
 
     public GoodsMetricProvider(
         IGoodService goodService,
@@ -47,24 +48,18 @@ public sealed class GoodsMetricProvider : IMetricProvider
         }
     }
 
-    private static bool _loggedFailure;
-    private static PropertyInfo? _allStockProp;
-
     private float TotalStock(string goodId, string? districtName)
     {
         try
         {
             if (districtName is null)
-            {
-                return ExtractAllStock(_resourceCounting.GetGlobalResourceCount(goodId));
-            }
+                return _resourceCounting.GetGlobalResourceCount(goodId).AllStock;
 
             int sum = 0;
             foreach (var d in _districts.FinishedDistrictCenters)
             {
                 if (d.DistrictName != districtName) continue;
-                var counter = _resourceCounting.GetDistrictResourceCounter(d);
-                sum += ExtractAllStock(counter.GetResourceCount(goodId));
+                sum += _resourceCounting.GetDistrictResourceCounter(d).GetResourceCount(goodId).AllStock;
             }
             return sum;
         }
@@ -77,29 +72,5 @@ public sealed class GoodsMetricProvider : IMetricProvider
             }
             return float.NaN;
         }
-    }
-
-    /// `ResourceCount` is a struct with `AllStock` etc. Resolve the property
-    /// once via reflection so this compiles without binding to an exact shape
-    /// (property name could shift across game versions).
-    private static int ExtractAllStock(ResourceCount rc)
-    {
-        if (_allStockProp == null)
-        {
-            var type = typeof(ResourceCount);
-            _allStockProp = type.GetProperty("AllStock")
-                        ?? type.GetProperty("Stock")
-                        ?? type.GetProperty("Amount");
-        }
-        if (_allStockProp == null) return 0;
-        object? boxed = rc;
-        var value = _allStockProp.GetValue(boxed);
-        return value switch
-        {
-            int i => i,
-            long l => (int)l,
-            float f => (int)f,
-            _ => 0,
-        };
     }
 }
