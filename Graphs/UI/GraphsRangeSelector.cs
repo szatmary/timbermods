@@ -4,11 +4,11 @@ using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-public enum GraphRange { FiveDays, ThirtyDays, All }
+public enum GraphRange { OneDay, TenDays, HundredDays, ThousandDays }
 
 public sealed class GraphsRangeSelector
 {
-    public GraphRange CurrentRange { get; private set; } = GraphRange.ThirtyDays;
+    public GraphRange CurrentRange { get; private set; } = GraphRange.TenDays;
     public event Action? Changed;
 
     private static readonly Color SelectedBg = new(0.38f, 0.30f, 0.20f);
@@ -21,6 +21,9 @@ public sealed class GraphsRangeSelector
     {
         var row = new VisualElement();
         row.style.flexDirection = FlexDirection.Row;
+        // Center the button strip inside whatever parent hosts it so the
+        // range selector always sits at the middle of the title bar.
+        row.style.alignSelf = Align.Center;
 
         Button Make(string label, GraphRange range)
         {
@@ -30,9 +33,10 @@ public sealed class GraphsRangeSelector
             return btn;
         }
 
-        row.Add(Make("5 days", GraphRange.FiveDays));
-        row.Add(Make("30 days", GraphRange.ThirtyDays));
-        row.Add(Make("All", GraphRange.All));
+        row.Add(Make("1 day",     GraphRange.OneDay));
+        row.Add(Make("10 days",   GraphRange.TenDays));
+        row.Add(Make("100 days",  GraphRange.HundredDays));
+        row.Add(Make("1000 days", GraphRange.ThousandDays));
 
         return row;
 
@@ -74,11 +78,12 @@ public sealed class GraphsRangeSelector
         btn.style.fontSize = 12;
     }
 
-    public float? LookbackDays() => CurrentRange switch
+    public float LookbackDays() => CurrentRange switch
     {
-        GraphRange.FiveDays   => 5f,
-        GraphRange.ThirtyDays => 30f,
-        GraphRange.All        => null,
-        _                     => 30f,
+        GraphRange.OneDay       => 1f,
+        GraphRange.TenDays      => 10f,
+        GraphRange.HundredDays  => 100f,
+        GraphRange.ThousandDays => 1000f,
+        _                       => 10f,
     };
 }

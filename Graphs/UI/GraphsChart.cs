@@ -157,11 +157,10 @@ public sealed class GraphsChart
         if (history.Count == 0) { HideAllEndIcons(); return; }
 
         float latestT = history.ReadTimestamp(history.Count - 1);
-        float earliestT = history.ReadTimestamp(0);
-        float? lookback = _range.LookbackDays();
-        float startT = lookback.HasValue
-            ? System.Math.Max(latestT - lookback.Value, earliestT)
-            : earliestT;
+        // Always use the full selected lookback window — don't clamp to the
+        // earliest sample. If we have less data than the window, the real
+        // samples will appear on the right side and the left will be empty.
+        float startT = latestT - _range.LookbackDays();
         int startIdx = history.FindFirstAtOrAfter(startT);
         int endIdx = history.Count;
         if (startIdx >= endIdx) { HideAllEndIcons(); return; }
@@ -342,26 +341,52 @@ public sealed class GraphsChart
         if (sprite == null) return null;
         try
         {
-            var tex = sprite.texture;
-            if (tex == null || !tex.isReadable) return null;
+            var src = sprite.texture;
+            if (src == null) return null;
             var srcRect = sprite.textureRect;
-            int x = (int)srcRect.x, y = (int)srcRect.y;
             int w = (int)srcRect.width, h = (int)srcRect.height;
             if (w <= 0 || h <= 0) return null;
-            var pixels = tex.GetPixels(x, y, w, h);
-            // Alpha-weighted average so transparent edges don't wash out
-            // the hue toward zero.
-            float r = 0, g = 0, b = 0, totalA = 0;
-            for (int i = 0; i < pixels.Length; i++)
+
+            // Blit through a RenderTexture so we can read pixels regardless
+            // of whether the source texture has Read/Write Enabled. Game
+            // asset-bundle sprites are almost always non-readable, so this
+            // is the only reliable way to sample them at runtime.
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+            var prev = RenderTexture.active;
+            try
             {
-                var p = pixels[i];
-                r += p.r * p.a;
-                g += p.g * p.a;
-                b += p.b * p.a;
-                totalA += p.a;
+                Graphics.Blit(src, rt);
+                RenderTexture.active = rt;
+                var snap = new Texture2D(w, h, TextureFormat.RGBA32, false, linear: true);
+                snap.ReadPixels(new Rect(srcRect.x, src.height - srcRect.y - h, w, h), 0, 0);
+                snap.Apply();
+                var pixels = snap.GetPixels();
+                UnityEngine.Object.Destroy(snap);
+
+                // Pick the most-saturated pixel (weighted by alpha). Banners
+                // have lots of neutral / white content; a plain average
+                // washes out the signature hue, while picking the peak
+                // saturation gives the color the user actually notices.
+                Color best = Color.black;
+                float bestScore = -1f;
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    var p = pixels[i];
+                    if (p.a < 0.5f) continue;
+                    float hi = Mathf.Max(p.r, Mathf.Max(p.g, p.b));
+                    float lo = Mathf.Min(p.r, Mathf.Min(p.g, p.b));
+                    float chroma = hi - lo;
+                    float score = chroma * p.a * (hi + 0.2f); // favor bright, saturated
+                    if (score > bestScore) { bestScore = score; best = p; }
+                }
+                if (bestScore <= 0f) return null;
+                return new Color(best.r, best.g, best.b, 1f);
             }
-            if (totalA <= 0) return null;
-            return new Color(r / totalA, g / totalA, b / totalA, 1f);
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+            }
         }
         catch
         {
@@ -390,11 +415,7 @@ public sealed class GraphsChart
         if (history.Count == 0) { HideTooltip(); return; }
 
         float latestT = history.ReadTimestamp(history.Count - 1);
-        float earliestT = history.ReadTimestamp(0);
-        float? lookback = _range.LookbackDays();
-        float startT = lookback.HasValue
-            ? System.Math.Max(latestT - lookback.Value, earliestT)
-            : earliestT;
+        float startT = latestT - _range.LookbackDays();
         int startIdx = history.FindFirstAtOrAfter(startT);
         int endIdx = history.Count;
         if (startIdx >= endIdx) { HideTooltip(); return; }
@@ -554,11 +575,7 @@ public sealed class GraphsChart
         if (history.Count == 0) return;
 
         float latestTimestamp = history.ReadTimestamp(history.Count - 1);
-        float earliestTimestamp = history.ReadTimestamp(0);
-        float? lookback = _range.LookbackDays();
-        float startTimestamp = lookback.HasValue
-            ? System.Math.Max(latestTimestamp - lookback.Value, earliestTimestamp)
-            : earliestTimestamp;
+        float startTimestamp = latestTimestamp - _range.LookbackDays();
 
         int startIdx = history.FindFirstAtOrAfter(startTimestamp);
         int endIdx = history.Count;

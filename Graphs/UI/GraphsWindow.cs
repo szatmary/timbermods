@@ -140,13 +140,14 @@ public sealed class GraphsWindow : IPanelController
         contentMargin.style.flexDirection = FlexDirection.Column;
         panel.Add(contentMargin);
 
-        // Title bar: range selector on the left, close X on the right.
-        // Explicit flex-shrink 0 so the body row below can't push it off,
-        // and explicit height so legendSlot's dropdown (which has its own
-        // popup/arrow region) can't creep upward into it.
+        // Title bar: range selector centered across the full width, close X
+        // pinned absolutely to the top-right so it doesn't shove the row
+        // off-center. Explicit flex-shrink 0 so the body row below can't
+        // push it off, and explicit height so legendSlot's dropdown (which
+        // has its own popup/arrow region) can't creep upward into it.
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.flexDirection = FlexDirection.Row;
-        titleBar.style.justifyContent = Justify.SpaceBetween;
+        titleBar.style.justifyContent = Justify.Center;
         titleBar.style.alignItems = Align.Center;
         titleBar.style.height = 40;
         titleBar.style.flexShrink = 0;
@@ -157,6 +158,9 @@ public sealed class GraphsWindow : IPanelController
         var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
         closeBtn.clicked += Close;
+        closeBtn.style.position = Position.Absolute;
+        closeBtn.style.right = 0;
+        closeBtn.style.top = 0;
         titleBar.Add(closeBtn);
 
         contentMargin.Add(titleBar);
