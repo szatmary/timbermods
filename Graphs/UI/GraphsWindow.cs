@@ -61,11 +61,13 @@ public sealed class GraphsWindow
         _document = _rootProvider.CreateEmpty("graphs-window-doc", SortOrder);
         _root = Build();
         _document.rootVisualElement.Add(_root);
-        // VisualElementInitializer left unused — when enabled it manipulates
-        // child elements in ways that can strip sprites we set on Image
-        // elements and shift layout. Re-enable if/when we have matching
-        // native widget subclasses for every Toggle/Button/Scroll/Dropdown
-        // in the tree. For now plain UIToolkit widgets with custom colors.
+        // Run the game's initializers: localizer, button clickability, UI
+        // sound, scrollbar setup. Safe now that every ILocalizableElement in
+        // the tree (LocalizableToggle) has its text-loc-key set before this
+        // runs. PanelSettings loaded by RootVisualElementProvider.CreateEmpty
+        // already has the game's themeStyleSheet, so USS custom properties
+        // (--background-image etc.) resolve for NineSliceBackground.
+        _elementInitializer.InitializeVisualElement(_root);
 
         _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
@@ -133,10 +135,12 @@ public sealed class GraphsWindow
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
-        // Native close-X — try the "close-button" class (found in sharedassets).
-        var closeBtn = new Button(Close);
+        // Native close-X: NineSliceButton with the game's "close-button" USS
+        // class. The button's nine-sliced cross sprite is wired via USS custom
+        // properties (--background-image etc.) resolved from the themeStyleSheet.
+        var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
-        closeBtn.AddToClassList("button-cross");
+        closeBtn.clicked += Close;
         titleBar.Add(closeBtn);
 
         panel.Add(titleBar);

@@ -266,8 +266,14 @@ public sealed class GraphsLegend
         swatch.style.backgroundColor = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
         row.Add(swatch);
 
-        var toggle = new Toggle { value = VisibleMetricIds.Contains(def.Id) };
-        toggle.AddToClassList("game-toggle");
+        // LocalizableToggle is the game's native checkbox — it renders a
+        // NineSliceBackground driven by USS custom properties applied by
+        // the themeStyleSheet on ScalablePanelSettings. _textLocKey must be
+        // set before VisualElementInitializer runs or the localizer throws;
+        // we use a placeholder because the metric name lives in a sibling
+        // Label.
+        var toggle = new LocalizableToggle { value = VisibleMetricIds.Contains(def.Id) };
+        toggle._textLocKey = "Graphs.Empty";
         toggle.style.marginRight = 4;
         toggle.RegisterValueChangedCallback(evt =>
         {

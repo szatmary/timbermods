@@ -20,7 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="$(GameManagedDir)/Timberborn.*.dll">
+    <!-- Wildcard all game DLLs except CoreUI — a publicized copy of CoreUI
+         follows so we can reference internals like LocalizableToggle and
+         NineSliceButton at compile time. Private=false so the real game
+         DLL loads at runtime. -->
+    <Reference Include="$(GameManagedDir)/Timberborn.*.dll"
+               Exclude="$(GameManagedDir)/Timberborn.CoreUI.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Timberborn.CoreUI">
+      <HintPath>lib/publicized/Timberborn.CoreUI.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="$(GameManagedDir)/Bindito.*.dll">
