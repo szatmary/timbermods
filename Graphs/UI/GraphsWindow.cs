@@ -123,11 +123,15 @@ public sealed class GraphsWindow : IPanelController
         panel.style.maxHeight = 1200;
         panel.style.flexDirection = FlexDirection.Column;
 
-        // Inner content wrapper — the sliced-border sprite has a thick
-        // transparent frame; box__content-margin insets our content so
-        // chart and legend don't overlap the frame. Matches Core/DialogBox.uxml.
+        // Inner content wrapper — the sliced-border sprite's visible frame
+        // takes up the outer ~20px; padding here insets our content so chart
+        // and legend don't sit under the frame.
         var contentMargin = new VisualElement { name = "graphs-content-margin" };
         contentMargin.AddToClassList("box__content-margin");
+        contentMargin.style.paddingLeft = 20;
+        contentMargin.style.paddingRight = 20;
+        contentMargin.style.paddingTop = 20;
+        contentMargin.style.paddingBottom = 20;
         contentMargin.style.flexGrow = 1;
         contentMargin.style.flexDirection = FlexDirection.Column;
         panel.Add(contentMargin);

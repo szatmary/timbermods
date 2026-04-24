@@ -1,5 +1,4 @@
 ID,Text,Comment
-Graphs.Empty, ,Intentionally-empty loc used for native checkboxes whose label lives in a sibling Label.
 Graphs.Metric.Total,Total beavers,
 Graphs.Metric.Adults,Adults,
 Graphs.Metric.Kits,Kits,
