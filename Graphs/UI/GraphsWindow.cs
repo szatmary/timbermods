@@ -136,10 +136,10 @@ public sealed class GraphsWindow
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
-        // Native close-X — try the "close-button" class (found in sharedassets).
-        var closeBtn = new Button(Close);
+        // Native close-X via NineSliceButton (CoreUI published for this mod).
+        var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
-        closeBtn.AddToClassList("button-cross");
+        closeBtn.clicked += Close;
         titleBar.Add(closeBtn);
 
         panel.Add(titleBar);

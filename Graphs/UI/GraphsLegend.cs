@@ -5,6 +5,8 @@ using System.Linq;
 using Graphs.Metrics;
 using Timberborn.CoreUI;
 using Timberborn.Goods;
+// CoreUI is referenced via its publicized copy in lib/publicized/ so
+// LocalizableToggle + NineSliceButton are accessible to this mod.
 using Timberborn.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -266,8 +268,15 @@ public sealed class GraphsLegend
         swatch.style.backgroundColor = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
         row.Add(swatch);
 
-        var toggle = new Toggle { value = VisibleMetricIds.Contains(def.Id) };
-        toggle.AddToClassList("game-toggle");
+        // LocalizableToggle is the game's native styled checkbox. Its
+        // `_textLocKey` MUST be non-empty or VisualElementLocalizer throws;
+        // we set a placeholder because the row's label lives in a sibling
+        // Label, not on the toggle. (CoreUI publicized at build time.)
+        var toggle = new LocalizableToggle
+        {
+            value = VisibleMetricIds.Contains(def.Id),
+        };
+        toggle._textLocKey = "Graphs.Placeholder";
         toggle.style.marginRight = 4;
         toggle.RegisterValueChangedCallback(evt =>
         {
