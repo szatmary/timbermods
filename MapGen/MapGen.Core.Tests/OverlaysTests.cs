@@ -86,18 +86,18 @@ public class OverlaysTests
         {
             Trees = new System.Collections.Generic.List<CatalogEntry>
             {
-                new() { Key = "maple", BlueprintKey = "Tree.Maple", Faction = Faction.Folktails, Weight = 1 },
-                new() { Key = "pine", BlueprintKey = "Tree.Pine", Faction = Faction.Both, Weight = 1 },
-                new() { Key = "birch", BlueprintKey = "Tree.Birch", Faction = Faction.IronTeeth, Weight = 1 },
+                new() { Key = "maple", BlueprintKey = "Tree.Maple", Weight = 1 },
+                new() { Key = "pine", BlueprintKey = "Tree.Pine", Weight = 1 },
+                new() { Key = "birch", BlueprintKey = "Tree.Birch", Weight = 1 },
             },
             Resources = new System.Collections.Generic.List<CatalogEntry>
             {
-                new() { Key = "berries", BlueprintKey = "Res.Berries", Faction = Faction.Folktails, Weight = 1 },
-                new() { Key = "blueberries", BlueprintKey = "Res.Blueberries", Faction = Faction.IronTeeth, Weight = 1 },
+                new() { Key = "berries", BlueprintKey = "Res.Berries", Weight = 1 },
+                new() { Key = "blueberries", BlueprintKey = "Res.Blueberries", Weight = 1 },
             },
             Thorns = new System.Collections.Generic.List<CatalogEntry>
             {
-                new() { Key = "thorns", BlueprintKey = "Res.Thorns", Faction = Faction.Both, Weight = 1 },
+                new() { Key = "thorns", BlueprintKey = "Res.Thorns", Weight = 1 },
             },
             Ruins = new System.Collections.Generic.List<RuinCatalogEntry>(),
             BlockObjects = new System.Collections.Generic.Dictionary<string, CatalogEntry>(),

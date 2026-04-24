@@ -85,8 +85,7 @@ public static class Overlays
             }
         }
 
-        // Guarantee some starting resources near the Start metacell (one per faction).
-        if (map.StartMeta.HasValue)
+        if (map.StartMeta.HasValue && catalog.Resources.Count > 0)
         {
             var sm = map.StartMeta.Value;
             var local = PoissonDisk.Sample(MetaSize, MetaSize, 1.8f, ref rng);
@@ -97,15 +96,7 @@ public static class Overlays
                 int vx = sm.X * MetaSize + p.X;
                 int vy = sm.Y * MetaSize + p.Y;
                 if (!IsPlaceableCell(map, vx, vy)) continue;
-                bool folk = (planted % 2 == 0);
-                var pool = new List<CatalogEntry>();
-                foreach (var e in catalog.Resources)
-                {
-                    if (folk && (e.Faction == Faction.Folktails || e.Faction == Faction.Both)) pool.Add(e);
-                    else if (!folk && (e.Faction == Faction.IronTeeth || e.Faction == Faction.Both)) pool.Add(e);
-                }
-                if (pool.Count == 0) continue;
-                var entry = pool[rng.NextRange(0, pool.Count)];
+                var entry = catalog.Resources[rng.NextRange(0, catalog.Resources.Count)];
                 int z = map.TopHeight(vx, vy) + 1;
                 map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
                     new VoxelCoord(vx, vy, z), Orientation.North, EntityKind.Resource));
