@@ -16,19 +16,27 @@ public sealed class GameIcons
     // them via IAssetLoader at UI-build time.
     private static readonly Dictionary<string, string> MetricToPath = new()
     {
+        // Population totals
         { "pop.total",             "UI/Images/Game/ico-beavers" },
         { "pop.adults",            "UI/Images/Game/ico-adult" },
         { "pop.kits",              "UI/Images/Game/ico-child" },
         { "pop.bots",              "UI/Images/Game/ico-bot" },
-        { "pop.homeless",          "UI/Images/Game/homeless" },
-        { "pop.unemployed.beavers", "UI/Images/Game/ico-no-work-beaver" },
-        { "pop.unemployed.bots",   "UI/Images/Game/ico-no-work-bot" },
-        { "pop.jobs.beavers",      "UI/Images/Game/ico-work-beaver" },
-        { "pop.jobs.bots",         "UI/Images/Game/ico-work-bot" },
-        { "pop.vacancies.beavers", "UI/Images/Game/ico-work-empty-beaver" },
-        { "pop.vacancies.bots",    "UI/Images/Game/ico-work-empty-bot" },
+        // Quarters — use the game's bed icons (same ones used in the dwelling
+        // tab in the upper-left HUD).
+        { "pop.homeless",          "UI/Images/Game/ico-no-bed" },
+        { "pop.beds.occupied",     "UI/Images/Game/ico-bed" },
+        { "pop.beds.free",         "UI/Images/Game/ico-bed-empty" },
+        // Employment
+        { "emp.unemployed.beavers", "UI/Images/Game/ico-no-work-beaver" },
+        { "emp.unemployed.bots",   "UI/Images/Game/ico-no-work-bot" },
+        { "emp.jobs.beavers",      "UI/Images/Game/ico-work-beaver" },
+        { "emp.jobs.bots",         "UI/Images/Game/ico-work-bot" },
+        { "emp.vacancies.beavers", "UI/Images/Game/ico-work-empty-beaver" },
+        { "emp.vacancies.bots",    "UI/Images/Game/ico-work-empty-bot" },
+        // Health
         { "pop.contaminated",      "UI/Images/Game/ico-contamination" },
         { "pop.infected",          "UI/Images/Game/ico-contamination" },
+        // Science
         { "science.stored",        "UI/Images/Game/science-icon" },
     };
 
