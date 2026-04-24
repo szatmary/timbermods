@@ -114,11 +114,12 @@ public sealed class GraphsWindow
         backdrop.style.alignItems = Align.Center;
 
         var panel = new VisualElement { name = "graphs-panel" };
+        // Use the game's "frame" panel background for a native look.
+        panel.AddToClassList("bg-sub-box--frame");
         panel.style.width = new Length(92, LengthUnit.Percent);
         panel.style.height = new Length(88, LengthUnit.Percent);
         panel.style.maxWidth = 1800;
         panel.style.maxHeight = 1200;
-        panel.style.backgroundColor = new StyleColor(new Color(0.12f, 0.11f, 0.10f, 0.97f));
         backdrop.Add(panel);
 
         var titleBar = new VisualElement { name = "graphs-title" };
@@ -136,9 +137,9 @@ public sealed class GraphsWindow
         title.style.unityFontStyleAndWeight = FontStyle.Bold;
         titleBar.Add(title);
 
-        // Native close-X: the game's own USS styles .button-cross as a
-        // crossed close button with the right sprite.
+        // Native close-X — try the "close-button" class (found in sharedassets).
         var closeBtn = new Button(Close);
+        closeBtn.AddToClassList("close-button");
         closeBtn.AddToClassList("button-cross");
         titleBar.Add(closeBtn);
 
