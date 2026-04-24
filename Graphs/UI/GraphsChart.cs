@@ -161,7 +161,8 @@ public sealed class GraphsChart
         float innerBottom = rect.y + rect.height;
         float innerHeight = innerBottom - innerTop;
 
-        var stillVisible = new System.Collections.Generic.HashSet<string>();
+        // First pass: gather all candidate icons with their preferred y.
+        var candidates = new System.Collections.Generic.List<(MetricDefinition Def, float Y, Sprite Sprite)>();
         int last = endIdx - 1;
 
         for (int m = 0; m < metrics.Count; m++)
@@ -179,28 +180,65 @@ public sealed class GraphsChart
             var sprite = _legend.ResolveIcon(def);
             if (sprite == null) continue;
 
-            if (!_endIcons.TryGetValue(def.Id, out var img))
+            candidates.Add((def, y, sprite));
+        }
+
+        // Resolve overlaps by greedy left-shift. Sort by y so pairs overlapping
+        // vertically are processed together. When a new icon's bounding box
+        // collides with any already-placed icon, shift the new one left by
+        // one icon-width-plus-gap until it no longer collides. The icon stays
+        // on the same horizontal line of y, so the connection to its line is
+        // preserved visually — just pushed inward from the right edge.
+        candidates.Sort((a, b) => a.Y.CompareTo(b.Y));
+        float baseX = rect.xMax - EndIconSize - 2;
+        const float stepX = EndIconSize + 2;
+        var placed = new System.Collections.Generic.List<(float X, float Y, string Id)>();
+        var stillVisible = new System.Collections.Generic.HashSet<string>();
+
+        foreach (var c in candidates)
+        {
+            float x = baseX;
+            while (OverlapsAny(placed, x, c.Y) && x > rect.x + 2)
+                x -= stepX;
+
+            if (!_endIcons.TryGetValue(c.Def.Id, out var img))
             {
-                img = new Image { sprite = sprite, pickingMode = PickingMode.Ignore };
+                img = new Image { sprite = c.Sprite, pickingMode = PickingMode.Ignore };
                 img.style.position = Position.Absolute;
                 img.style.width = EndIconSize;
                 img.style.height = EndIconSize;
                 _element.Add(img);
-                _endIcons[def.Id] = img;
+                _endIcons[c.Def.Id] = img;
             }
             else
             {
-                img.sprite = sprite;
+                img.sprite = c.Sprite;
             }
             img.style.display = DisplayStyle.Flex;
-            img.style.left = rect.xMax - EndIconSize - 2;
-            img.style.top = y - EndIconSize / 2f;
-            stillVisible.Add(def.Id);
+            img.style.left = x;
+            img.style.top = c.Y - EndIconSize / 2f;
+
+            placed.Add((x, c.Y, c.Def.Id));
+            stillVisible.Add(c.Def.Id);
         }
 
         foreach (var (id, img) in _endIcons)
             if (!stillVisible.Contains(id))
                 img.style.display = DisplayStyle.None;
+    }
+
+    private static bool OverlapsAny(
+        System.Collections.Generic.List<(float X, float Y, string Id)> placed,
+        float x, float y)
+    {
+        for (int i = 0; i < placed.Count; i++)
+        {
+            var p = placed[i];
+            if (System.Math.Abs(p.X - x) < EndIconSize &&
+                System.Math.Abs(p.Y - y) < EndIconSize)
+                return true;
+        }
+        return false;
     }
 
     private void HideAllEndIcons()
