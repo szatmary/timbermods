@@ -119,6 +119,15 @@ public sealed class GraphsWindow : IPanelController
         panel.style.maxHeight = 1200;
         panel.style.flexDirection = FlexDirection.Column;
 
+        // Inner content wrapper — the sliced-border sprite has a thick
+        // transparent frame; box__content-margin insets our content so
+        // chart and legend don't overlap the frame. Matches Core/DialogBox.uxml.
+        var contentMargin = new VisualElement { name = "graphs-content-margin" };
+        contentMargin.AddToClassList("box__content-margin");
+        contentMargin.style.flexGrow = 1;
+        contentMargin.style.flexDirection = FlexDirection.Column;
+        panel.Add(contentMargin);
+
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.flexDirection = FlexDirection.Row;
         titleBar.style.justifyContent = Justify.SpaceBetween;
@@ -138,12 +147,12 @@ public sealed class GraphsWindow : IPanelController
         closeBtn.clicked += Close;
         titleBar.Add(closeBtn);
 
-        panel.Add(titleBar);
+        contentMargin.Add(titleBar);
 
         var body = new VisualElement { name = "graphs-body" };
         body.style.flexGrow = 1;
         body.style.flexDirection = FlexDirection.Row;
-        panel.Add(body);
+        contentMargin.Add(body);
 
         var chartSlot = new VisualElement { name = "graphs-chart-slot" };
         chartSlot.style.flexGrow = 1;
@@ -168,7 +177,7 @@ public sealed class GraphsWindow : IPanelController
         bottom.style.justifyContent = Justify.Center;
         bottom.style.alignItems = Align.Center;
         bottom.Add(_rangeSelector.Build());
-        panel.Add(bottom);
+        contentMargin.Add(bottom);
 
         return panel;
     }
