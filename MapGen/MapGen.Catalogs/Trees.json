@@ -1,0 +1,6 @@
+[
+  { "key": "maple", "blueprintKey": "NaturalResource.Maple.Folktails", "faction": "Folktails", "weight": 1.0 },
+  { "key": "pine", "blueprintKey": "NaturalResource.Pine.Folktails", "faction": "Both", "weight": 1.0 },
+  { "key": "birch", "blueprintKey": "NaturalResource.Birch.IronTeeth", "faction": "IronTeeth", "weight": 1.0 },
+  { "key": "dead_stump", "blueprintKey": "NaturalResource.DeadTree", "faction": "Both", "weight": 0.5 }
+]

@@ -1,0 +1,6 @@
+[
+  { "key": "ruined_shelter", "blueprintKey": "Ruin.Shelter", "faction": "Both", "weight": 1.0, "footprintW": 1, "footprintH": 1 },
+  { "key": "collapsed_wall", "blueprintKey": "Ruin.Wall", "faction": "Both", "weight": 1.0, "footprintW": 2, "footprintH": 1 },
+  { "key": "broken_platform", "blueprintKey": "Ruin.Platform", "faction": "Both", "weight": 0.7, "footprintW": 2, "footprintH": 2 },
+  { "key": "ruined_pipe", "blueprintKey": "Ruin.Pipe", "faction": "Both", "weight": 0.5, "footprintW": 1, "footprintH": 1 }
+]
