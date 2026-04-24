@@ -61,14 +61,11 @@ public sealed class GraphsWindow
         _document = _rootProvider.CreateEmpty("graphs-window-doc", SortOrder);
         _root = Build();
         _document.rootVisualElement.Add(_root);
-        // Apply game styles to the tree now that we only use plain UIToolkit
-        // widgets (Toggle/Button/ScrollView/DropdownField) — the initializer
-        // previously crashed on LocalizableToggle without a loc-key.
-        try { _elementInitializer.InitializeVisualElement(_root); }
-        catch (System.Exception ex)
-        {
-            UnityEngine.Debug.LogWarning($"[Graphs] native style init failed, falling back to raw UIToolkit: {ex.Message}");
-        }
+        // VisualElementInitializer left unused — when enabled it manipulates
+        // child elements in ways that can strip sprites we set on Image
+        // elements and shift layout. Re-enable if/when we have matching
+        // native widget subclasses for every Toggle/Button/Scroll/Dropdown
+        // in the tree. For now plain UIToolkit widgets with custom colors.
 
         _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
