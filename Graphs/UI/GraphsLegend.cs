@@ -312,7 +312,18 @@ public sealed class GraphsLegend
     public Sprite? ResolveIcon(MetricDefinition def)
     {
         ResolveDisplayName(def, out var icon);
-        return icon;
+        if (icon != null) return icon;
+        // Thematic fallbacks for metrics without their own sprite: reuse
+        // a good icon that represents the underlying need.
+        if (def.Id == "need.hunger.avg") return TryGoodIcon("Berries");
+        if (def.Id == "need.thirst.avg") return TryGoodIcon("Water");
+        return null;
+    }
+
+    private Sprite? TryGoodIcon(string goodId)
+    {
+        try { return _goodService.GetGood(goodId)?.Icon.Asset; }
+        catch { return null; }
     }
 
     private string ResolveDisplayName(MetricDefinition def, out Sprite? icon)

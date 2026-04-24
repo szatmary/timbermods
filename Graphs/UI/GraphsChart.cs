@@ -227,18 +227,28 @@ public sealed class GraphsChart
                     _element.Add(img);
                     _endIcons[c.Def.Id] = img;
                 }
-                // Metrics without a native sprite (wellbeing / hunger / thirst)
-                // get a plain filled square in the metric's line color so they
-                // still have a readable gutter marker.
                 img.sprite = c.Sprite;
                 if (c.Sprite == null)
                 {
+                    // No sprite at all (e.g. wellbeing) — plain filled square
+                    // in the line color so the gutter still has a marker.
                     var color = GraphColors.ColorFor(c.Def.Id, c.Def.Category);
                     img.style.backgroundColor = new StyleColor(color);
+                    img.tintColor = Color.white;
                 }
                 else
                 {
+                    // Tint thematic-fallback sprites (like Berries for hunger)
+                    // with the metric's line color so the icon reads as "my
+                    // line's color" first, "a berry" second. Native metric
+                    // icons (pop/science/goods) pass their own colors through.
                     img.style.backgroundColor = StyleKeyword.Null;
+                    bool isFallback =
+                        c.Def.Id == "need.hunger.avg" ||
+                        c.Def.Id == "need.thirst.avg";
+                    img.tintColor = isFallback
+                        ? GraphColors.ColorFor(c.Def.Id, c.Def.Category)
+                        : Color.white;
                 }
                 img.style.display = DisplayStyle.Flex;
                 img.style.left = gutterX;
