@@ -173,13 +173,15 @@ public sealed class WellbeingMetricProvider : IMetricProvider
                         continue;
                     }
                     var spec = needManager.GetNeedSpec(needId);
-                    var max = spec?.MaximumValue ?? 0f;
-                    if (max <= 0f)
-                    {
-                        continue;
-                    }
+                    if (spec == null) continue;
+                    float min = spec.MinimumValue;
+                    float max = spec.MaximumValue;
+                    float range = max - min;
+                    if (range <= 0f) continue;
                     var points = needManager.GetNeedPoints(needId);
-                    sum += points / max;
+                    // Normalize to 0..1 over the need's actual min..max range.
+                    // 0 = at minimum (most unfavorable), 1 = at maximum (fully satisfied).
+                    sum += (points - min) / range;
                     count++;
                 }
                 catch
