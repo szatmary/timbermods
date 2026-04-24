@@ -47,7 +47,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
         }
     }
 
-    private static bool _loggedDiag;
+    private static bool _loggedFailure;
     private static PropertyInfo? _allStockProp;
 
     private float TotalStock(string goodId, string? districtName)
@@ -56,14 +56,7 @@ public sealed class GoodsMetricProvider : IMetricProvider
         {
             if (districtName is null)
             {
-                var rc = _resourceCounting.GetGlobalResourceCount(goodId);
-                int total = ExtractAllStock(rc);
-                if (!_loggedDiag && goodId == "Log")
-                {
-                    _loggedDiag = true;
-                    Debug.Log($"[Graphs] ResourceCount Log global = {total} (type: {rc.GetType().Name})");
-                }
-                return total;
+                return ExtractAllStock(_resourceCounting.GetGlobalResourceCount(goodId));
             }
 
             int sum = 0;
@@ -71,17 +64,16 @@ public sealed class GoodsMetricProvider : IMetricProvider
             {
                 if (d.DistrictName != districtName) continue;
                 var counter = _resourceCounting.GetDistrictResourceCounter(d);
-                var rc = counter.GetResourceCount(goodId);
-                sum += ExtractAllStock(rc);
+                sum += ExtractAllStock(counter.GetResourceCount(goodId));
             }
             return sum;
         }
         catch (Exception ex)
         {
-            if (!_loggedDiag)
+            if (!_loggedFailure)
             {
-                _loggedDiag = true;
-                Debug.LogWarning($"[Graphs] ResourceCounting lookup failed for '{goodId}': {ex}\n{ex.StackTrace}");
+                _loggedFailure = true;
+                Debug.LogWarning($"[Graphs] ResourceCounting lookup failed for '{goodId}': {ex.Message}");
             }
             return float.NaN;
         }

@@ -82,10 +82,6 @@ public sealed class GraphsChart
         }
     }
 
-    // Log each distinct metric id ONCE per session when we first draw it,
-    // so we can see actual min/max/NaN counts when the user toggles it on.
-    private readonly HashSet<string> _loggedMetrics = new();
-
     private void DrawLines(
         MeshGenerationContext ctx, Rect rect, MetricHistory history,
         int startIdx, int endIdx, float startT, float endT)
@@ -132,14 +128,6 @@ public sealed class GraphsChart
             if (!scaleMax.TryGetValue(def.ScaleGroup, out var catMax)) continue;
 
             Color color = GraphColors.ColorFor(def.Id, def.Category);
-
-            if (_loggedMetrics.Add(def.Id))
-            {
-                int nanCount = 0;
-                for (int i = startIdx; i < endIdx; i++)
-                    if (float.IsNaN(history.ReadValue(i, m))) nanCount++;
-                Debug.Log($"[Graphs] drawing '{def.Id}': category={def.Category} catMax={catMax} nan={nanCount}/{sampleCount}");
-            }
 
             bool havePrev = false;
             Vector2 prev = default;
