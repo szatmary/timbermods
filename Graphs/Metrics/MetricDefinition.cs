@@ -21,6 +21,22 @@ public sealed class MetricDefinition
     /// share a scale for direct comparison.
     public string ScaleGroup { get; }
 
+    /// Optional soft upper bound for this metric's y-axis. The chart uses
+    /// `max(observed, FixedMax)` as the ceiling — so a metric with a known
+    /// natural top (e.g. 0..1 satisfaction) reads correctly when values
+    /// are tiny, but the axis still grows if the data ever exceeds the
+    /// declared bound. If multiple metrics in the same ScaleGroup declare
+    /// a FixedMax, the group uses the largest of them.
+    public float? FixedMax { get; }
+
+    /// Optional soft lower bound for this metric's y-axis. The chart uses
+    /// `min(observed, FixedMin)` as the floor — lets a metric that can go
+    /// negative (e.g. wellbeing) maintain a stable visual baseline instead
+    /// of the axis jittering as values cross zero, while still expanding
+    /// downward if the data goes further negative. If multiple metrics in
+    /// the same ScaleGroup declare a FixedMin, the group uses the smallest.
+    public float? FixedMin { get; }
+
     /// <param name="districtName">
     /// Specific district name when the filter is set to one district, or
     /// null for "all districts" (settlement-wide aggregation).
@@ -34,7 +50,9 @@ public sealed class MetricDefinition
         MetricScope scope,
         Func<string?, float> valueFn,
         string? subGroup = null,
-        string? scaleGroup = null)
+        string? scaleGroup = null,
+        float? fixedMax = null,
+        float? fixedMin = null)
     {
         Id = id;
         NameLocKey = nameLocKey;
@@ -43,5 +61,7 @@ public sealed class MetricDefinition
         ValueFn = valueFn;
         SubGroup = subGroup;
         ScaleGroup = scaleGroup ?? category.ToString();
+        FixedMax = fixedMax;
+        FixedMin = fixedMin;
     }
 }

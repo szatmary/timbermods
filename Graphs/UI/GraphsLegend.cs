@@ -36,6 +36,8 @@ public sealed class GraphsLegend
     private readonly Dictionary<string, Label> _valueLabels = new();
     private bool _defaultsApplied;
 
+    private static readonly Color WellbeingTint = new(0.96f, 0.80f, 0.48f);
+
     public GraphsLegend(MetricRegistry registry, IGoodService goodService, ILoc loc, GameIcons icons)
     {
         _registry = registry;
@@ -241,6 +243,9 @@ public sealed class GraphsLegend
         row.style.marginLeft = 6;
 
         string displayName = ResolveDisplayName(def, out Sprite? icon);
+        // Fall back to the shared icon resolver so wellbeing/need rows pick up
+        // the same Berries/Water/ico-beavers sprites the chart gutter uses.
+        if (icon == null) icon = ResolveIcon(def);
 
         // Icon on the far left — either the game's good-icon sprite (goods)
         // or a 20x20 swatch slot (other metrics) so rows align vertically.
@@ -249,6 +254,8 @@ public sealed class GraphsLegend
             var img = new Image { sprite = icon };
             img.style.width = 20; img.style.height = 20;
             img.style.marginRight = 6;
+            if (def.Category == MetricCategory.Wellbeing)
+                img.tintColor = WellbeingTint;
             row.Add(img);
         }
         else
@@ -290,11 +297,24 @@ public sealed class GraphsLegend
         name.style.fontSize = 12;
         row.Add(name);
 
-        // Current-value label lives on the chart's gutter icon now, not in
-        // the legend row. Registry entry kept empty so UpdateCurrentValues
-        // remains a no-op for this metric.
+        // Clicking the row text (or anywhere on the row outside the toggle
+        // itself) flips the toggle — easier target than the small checkbox.
+        row.RegisterCallback<ClickEvent>(evt =>
+        {
+            // Don't double-toggle when the user clicks directly on the
+            // toggle's own hit area.
+            if (evt.target is VisualElement ve && IsDescendantOf(ve, toggle)) return;
+            toggle.value = !toggle.value;
+        });
 
         return row;
+    }
+
+    private static bool IsDescendantOf(VisualElement candidate, VisualElement ancestor)
+    {
+        for (var e = candidate; e != null; e = e.parent)
+            if (e == ancestor) return true;
+        return false;
     }
 
     /// For goods, return the game's localized DisplayName and grab the icon.
@@ -343,24 +363,47 @@ public sealed class GraphsLegend
                 {
                     icon = spec.Icon.Asset;
                     var display = spec.DisplayName.Value;
-                    if (!string.IsNullOrEmpty(display)) return display;
+                    if (!string.IsNullOrEmpty(display)) return TitleCase(display);
                 }
             }
             catch { }
-            return goodId;
+            return TitleCase(goodId);
         }
 
         var fallback = def.NameLocKey;
         try
         {
             var t = _loc.T(def.NameLocKey);
-            if (!string.IsNullOrEmpty(t) && t != def.NameLocKey) return t;
+            if (!string.IsNullOrEmpty(t) && t != def.NameLocKey) return TitleCase(t);
         }
         catch { }
         // Strip everything before the last '.' so "Graphs.Metric.Total" → "Total".
         int lastDot = fallback.LastIndexOf('.');
-        return lastDot >= 0 && lastDot < fallback.Length - 1
+        var raw = lastDot >= 0 && lastDot < fallback.Length - 1
             ? fallback.Substring(lastDot + 1)
             : fallback;
+        return TitleCase(raw);
+    }
+
+    /// Uppercase the first letter of every word so labels always read
+    /// "Treated Planks" / "Iron Teeth" regardless of how the underlying
+    /// source stored them (game strings sometimes come through lowercase).
+    private static string TitleCase(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        var chars = s.ToCharArray();
+        bool startOfWord = true;
+        for (int i = 0; i < chars.Length; i++)
+        {
+            char c = chars[i];
+            if (char.IsWhiteSpace(c) || c == '-' || c == '/')
+            {
+                startOfWord = true;
+                continue;
+            }
+            if (startOfWord && char.IsLetter(c)) chars[i] = char.ToUpperInvariant(c);
+            startOfWord = false;
+        }
+        return new string(chars);
     }
 }

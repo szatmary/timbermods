@@ -11,16 +11,14 @@ using UnityEngine;
 namespace Graphs.Metrics;
 
 /// Samples every registered metric at a fixed cadence in in-game time.
-/// Rate: 240 samples per in-game day (one every 6 in-game minutes) — at
-/// normal game speed that's ~2.5 real seconds between samples, so lines
-/// start to appear almost immediately after opening the window.
+/// Rate: 24 samples per in-game day (one per in-game hour).
 /// Persists up to `PersistedSampleCap` samples into the save file, keyed
 /// by metric id so a changed metric registry on reload remaps correctly.
 public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISaveableSingleton
 {
-    public const int SamplesPerDay = 240;
-    public const int MaxSamples = 48_000;      // ~200 in-game days of history.
-    public const int PersistedSampleCap = 5000; // cap saved to ~20 in-game days.
+    public const int SamplesPerDay = 24;
+    public const int MaxSamples = 24_000;        // ~1000 in-game days in RAM.
+    public const int PersistedSampleCap = 24_000; // ~1000 in-game days saved.
 
     private static readonly SingletonKey SavedKey = new("GraphsMetricHistory");
     private static readonly PropertyKey<int> SavedSampleCount = new("SampleCount");

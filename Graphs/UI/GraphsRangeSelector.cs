@@ -48,22 +48,30 @@ public sealed class GraphsRangeSelector
 
     private static void StyleButton(Button btn, bool selected)
     {
-        if (!btn.ClassListContains("button-game"))
-            btn.AddToClassList("button-game");
-
-        // Game USS handles background, border, hover state. We only toggle the
-        // active indicator via .button-active (a class the USS also styles).
-        if (selected && !btn.ClassListContains("button-active"))
-            btn.AddToClassList("button-active");
-        else if (!selected && btn.ClassListContains("button-active"))
-            btn.RemoveFromClassList("button-active");
-
+        // Inline styles rather than USS classes — the game's .button-game
+        // rules don't reliably apply background/text here, and the title-bar
+        // context requires the buttons to paint themselves regardless.
         btn.style.minWidth = 96;
-        btn.style.height = 32;
+        btn.style.height = 28;
         btn.style.marginLeft = 2;
         btn.style.marginRight = 2;
         btn.style.paddingLeft = 8;
         btn.style.paddingRight = 8;
+
+        btn.style.backgroundColor = selected ? SelectedBg : UnselectedBg;
+        btn.style.color = selected ? SelectedFg : UnselectedFg;
+
+        btn.style.borderTopWidth = 1;
+        btn.style.borderBottomWidth = 1;
+        btn.style.borderLeftWidth = 1;
+        btn.style.borderRightWidth = 1;
+        btn.style.borderTopColor = Border;
+        btn.style.borderBottomColor = Border;
+        btn.style.borderLeftColor = Border;
+        btn.style.borderRightColor = Border;
+
+        btn.style.unityFontStyleAndWeight = selected ? FontStyle.Bold : FontStyle.Normal;
+        btn.style.fontSize = 12;
     }
 
     public float? LookbackDays() => CurrentRange switch

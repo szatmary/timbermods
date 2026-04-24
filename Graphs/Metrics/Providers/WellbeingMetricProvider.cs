@@ -49,25 +49,34 @@ public sealed class WellbeingMetricProvider : IMetricProvider
             nameLocKey: "Graphs.Metric.Wellbeing",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
-            valueFn: districtName => WalkWellbeing(districtName).Average);
+            valueFn: districtName => WalkWellbeing(districtName).Average,
+            // Wellbeing is on the 0..25ish scale (WellbeingTracker.Wellbeing
+            // is an int), so it can't share a y-axis with the 0..1 hunger /
+            // thirst lines — otherwise the need metrics collapse to zero.
+            scaleGroup: "WellbeingAvg");
 
         // Hunger / thirst are inverted at the provider: we plot "unmet need"
         // rather than "satisfaction", so a rising line means beavers are
         // getting hungrier/thirstier — matches how bad things usually read
         // on charts (worse = higher).
+        // Hunger / thirst are 0..1 (inverted need satisfaction). Pin the
+        // y-axis to 1.0 so 0.03 reads near the bottom instead of stretching
+        // to fill the chart.
         yield return new MetricDefinition(
             id: "need.hunger.avg",
             nameLocKey: "Graphs.Metric.Hunger",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
-            valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveFoodNeedId())));
+            valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveFoodNeedId())),
+            fixedMax: 1f);
 
         yield return new MetricDefinition(
             id: "need.thirst.avg",
             nameLocKey: "Graphs.Metric.Thirst",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
-            valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveWaterNeedId())));
+            valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveWaterNeedId())),
+            fixedMax: 1f);
     }
 
     private static float Invert(float satisfaction)

@@ -38,6 +38,12 @@ public sealed class GameIcons
         { "pop.infected",          "UI/Images/Game/ico-contamination" },
         // Science
         { "science.stored",        "UI/Images/Game/science-icon" },
+        // Weather — not metrics, just loaded via the same path so the chart
+        // can label its drought/badtide bands with the game's native banner
+        // sprites (the wide "weather changed" notifications that flash in
+        // the upper-right of the HUD, not the small square icons).
+        { "weather.drought",       "UI/Images/Game/weather-notification-dry" },
+        { "weather.badtide",       "UI/Images/Game/weather-notification-badtide" },
     };
 
     public GameIcons(IAssetLoader assets)

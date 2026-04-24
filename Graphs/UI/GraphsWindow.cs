@@ -135,22 +135,24 @@ public sealed class GraphsWindow : IPanelController
         contentMargin.style.paddingLeft = 20;
         contentMargin.style.paddingRight = 20;
         contentMargin.style.paddingTop = 20;
-        contentMargin.style.paddingBottom = 20;
+        contentMargin.style.paddingBottom = 6;
         contentMargin.style.flexGrow = 1;
         contentMargin.style.flexDirection = FlexDirection.Column;
         panel.Add(contentMargin);
 
-        // Title bar holds only the close X — no title text per user pref.
-        // Explicit flex-shrink 0 so the row below can't push it off, and
-        // explicit height so legendSlot's dropdown (which has its own
+        // Title bar: range selector on the left, close X on the right.
+        // Explicit flex-shrink 0 so the body row below can't push it off,
+        // and explicit height so legendSlot's dropdown (which has its own
         // popup/arrow region) can't creep upward into it.
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.flexDirection = FlexDirection.Row;
-        titleBar.style.justifyContent = Justify.FlexEnd;
+        titleBar.style.justifyContent = Justify.SpaceBetween;
         titleBar.style.alignItems = Align.Center;
         titleBar.style.height = 40;
         titleBar.style.flexShrink = 0;
         titleBar.style.marginBottom = 6;
+
+        titleBar.Add(_rangeSelector.Build());
 
         var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
@@ -168,29 +170,21 @@ public sealed class GraphsWindow : IPanelController
         chartSlot.style.flexGrow = 1;
         chartSlot.style.marginLeft = 10;
         chartSlot.style.marginTop = 10;
-        chartSlot.style.marginBottom = 10;
+        chartSlot.style.marginBottom = 0;
         chartSlot.Add(_chart.Build());
         body.Add(chartSlot);
 
+        // Legend column stretches the full body height; scroll area inside
+        // the legend flex-grows so it reaches the bottom of the window.
         var legendSlot = new VisualElement { name = "graphs-legend-slot" };
         legendSlot.style.width = 230;
         legendSlot.style.marginRight = 10;
         legendSlot.style.marginTop = 10;
-        legendSlot.style.marginBottom = 10;
+        legendSlot.style.marginBottom = 0;
+        legendSlot.style.flexDirection = FlexDirection.Column;
         legendSlot.Add(_districtSelector.Build());
         legendSlot.Add(_legend.Build());
         body.Add(legendSlot);
-
-        var bottom = new VisualElement { name = "graphs-bottom" };
-        bottom.style.height = 40;
-        bottom.style.minHeight = 40;
-        bottom.style.flexShrink = 0;
-        bottom.style.flexDirection = FlexDirection.Row;
-        bottom.style.justifyContent = Justify.Center;
-        bottom.style.alignItems = Align.Center;
-        bottom.style.marginTop = 6;
-        bottom.Add(_rangeSelector.Build());
-        contentMargin.Add(bottom);
 
         return panel;
     }

@@ -6,12 +6,20 @@ namespace Graphs.UI;
 
 public sealed class GraphsChart
 {
-    // Tints chosen to match the game's own weather theming:
-    // - Drought: hazy amber/yellow (like the dry-season skies and grass)
-    // - Badtide: sickly pink-magenta (like badwater)
-    private static readonly Color DroughtColor   = new(0.95f, 0.70f, 0.20f, 0.18f);
-    private static readonly Color BadtideColor   = new(0.90f, 0.30f, 0.55f, 0.20f);
-    private static readonly Color TemperateColor = new(0, 0, 0, 0);
+    // Fallback tints used until we've successfully sampled the drought /
+    // badtide notification banners. Once sampled, the banner's average hue
+    // replaces the fallback (still applied at low alpha for the band fill).
+    private static readonly Color FallbackDroughtColor = new(0.88f, 0.45f, 0.12f);
+    private static readonly Color FallbackBadtideColor = new(0.55f, 0.20f, 0.70f);
+    private const float WeatherBandAlpha = 0.22f;
+
+    private Color _droughtColor = WithAlpha(FallbackDroughtColor, WeatherBandAlpha);
+    private Color _badtideColor = WithAlpha(FallbackBadtideColor, WeatherBandAlpha);
+    private bool _weatherColorsSampled;
+
+    private const float WeatherBandRadius = 16f;
+
+    private static Color WithAlpha(Color c, float a) => new(c.r, c.g, c.b, a);
 
     // Fixed tint applied to every Wellbeing-category icon so the three
     // metrics (wellbeing / hunger / thirst) read as a single thematic group.
@@ -21,6 +29,7 @@ public sealed class GraphsChart
     private readonly GraphsRangeSelector _range;
     private readonly MetricRegistry _registry;
     private readonly GraphsLegend _legend;
+    private readonly GameIcons _icons;
 
     private VisualElement? _element;
 
@@ -37,9 +46,10 @@ public sealed class GraphsChart
     // update; positioned on every repaint trigger.
     private const float EndIconSize = 18f;
     private const float EndLabelHeight = 14f;
-    // The combined vertical footprint of one marker (icon + value label
-    // beneath it). Used for overlap grouping + stacking step so the label
-    // of the upper marker never lands on top of the icon of the marker below.
+    // Vertical footprint of one marker (icon + label beneath it). Used as
+    // the ideal inter-marker spacing during stacking. If there genuinely
+    // isn't enough room for n * MarkerHeight, the stacker compresses the
+    // pitch uniformly so everything still fits rather than spilling off.
     private const float MarkerHeight = EndIconSize + EndLabelHeight;
     private const float GutterWidth = EndIconSize + 6f; // icon + padding
     private readonly System.Collections.Generic.Dictionary<string, Image> _endIcons = new();
@@ -49,19 +59,22 @@ public sealed class GraphsChart
         MetricSampler sampler,
         GraphsRangeSelector range,
         MetricRegistry registry,
-        GraphsLegend legend)
+        GraphsLegend legend,
+        GameIcons icons)
     {
         _sampler = sampler;
         _range = range;
         _registry = registry;
         _legend = legend;
+        _icons = icons;
     }
 
     public VisualElement Build()
     {
         _element = new VisualElement { name = "graphs-chart" };
         _element.style.flexGrow = 1;
-        _element.style.backgroundColor = new StyleColor(new Color(0.04f, 0.04f, 0.06f));
+        // Transparent so the game's panel background (wood frame) shows
+        // through — the chart paints grid, weather bands, and lines itself.
         _element.generateVisualContent += Draw;
         _range.Changed += OnRepaintTrigger;
         _legend.Changed += OnRepaintTrigger;
@@ -119,12 +132,14 @@ public sealed class GraphsChart
     {
         _element?.MarkDirtyRepaint();
         UpdateEndIcons();
+        if (_cursorInside) RefreshTooltip();
     }
 
     private void OnRepaintTrigger()
     {
         _element?.MarkDirtyRepaint();
         UpdateEndIcons();
+        if (_cursorInside) RefreshTooltip();
     }
 
     /// For every visible metric with a last-sample position, place its icon
@@ -151,22 +166,8 @@ public sealed class GraphsChart
         int endIdx = history.Count;
         if (startIdx >= endIdx) { HideAllEndIcons(); return; }
 
-        // Recompute per-ScaleGroup max to match Draw(). Keep in sync.
-        var scaleMax = new System.Collections.Generic.Dictionary<string, float>(System.StringComparer.Ordinal);
+        var ranges = ComputeScaleRanges(history, startIdx, endIdx);
         var metrics = _registry.Metrics;
-        for (int m = 0; m < metrics.Count; m++)
-        {
-            var def = metrics[m];
-            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
-            scaleMax.TryGetValue(def.ScaleGroup, out var cur);
-            for (int i = startIdx; i < endIdx; i++)
-            {
-                float v = history.ReadValue(i, m);
-                if (float.IsNaN(v)) continue;
-                if (v > cur) cur = v;
-            }
-            scaleMax[def.ScaleGroup] = cur;
-        }
 
         const float topInset = 6f;
         float innerTop = draw.y + topInset;
@@ -183,12 +184,12 @@ public sealed class GraphsChart
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
-            if (!scaleMax.TryGetValue(def.ScaleGroup, out var catMax)) continue;
+            if (!ranges.TryGetValue(def.ScaleGroup, out var range)) continue;
 
             float v = history.ReadValue(last, m);
             if (float.IsNaN(v)) continue;
 
-            float norm = catMax > 0 ? v / catMax : 0f;
+            float norm = range.Span > 0 ? (v - range.Min) / range.Span : 0f;
             float y = innerBottom - norm * innerHeight;
 
             candidates.Add((def, y, _legend.ResolveIcon(def)));
@@ -211,23 +212,35 @@ public sealed class GraphsChart
         float[] ys = new float[candidates.Count];
         for (int i = 0; i < candidates.Count; i++) ys[i] = candidates[i].Y;
 
+        // If the ideal MarkerHeight (icon + label) would overflow the
+        // available chart height, compress the inter-marker pitch uniformly
+        // so all markers still fit. Labels end up slightly overlapping the
+        // icon below them, but nothing falls off the chart.
+        float effectiveMH = MarkerHeight;
+        if (ys.Length > 1)
+        {
+            float available = maxY - minY;
+            float needed = (ys.Length - 1) * MarkerHeight;
+            if (needed > available) effectiveMH = available / (ys.Length - 1);
+        }
+
         // forward push-down
         if (ys.Length > 0) ys[0] = Mathf.Max(ys[0], minY);
         for (int i = 1; i < ys.Length; i++)
-            ys[i] = Mathf.Max(ys[i], ys[i - 1] + MarkerHeight);
+            ys[i] = Mathf.Max(ys[i], ys[i - 1] + effectiveMH);
 
         // backward pull-up if the bottom overflowed
         if (ys.Length > 0 && ys[ys.Length - 1] > maxY)
         {
             ys[ys.Length - 1] = maxY;
             for (int i = ys.Length - 2; i >= 0; i--)
-                ys[i] = Mathf.Min(ys[i], ys[i + 1] - MarkerHeight);
+                ys[i] = Mathf.Min(ys[i], ys[i + 1] - effectiveMH);
             // second forward pass in case the top now overflows
             if (ys[0] < minY)
             {
                 ys[0] = minY;
                 for (int i = 1; i < ys.Length; i++)
-                    ys[i] = Mathf.Max(ys[i], ys[i - 1] + MarkerHeight);
+                    ys[i] = Mathf.Max(ys[i], ys[i - 1] + effectiveMH);
             }
         }
 
@@ -306,6 +319,54 @@ public sealed class GraphsChart
     {
         foreach (var kv in _endIcons) kv.Value.style.display = DisplayStyle.None;
         foreach (var kv in _endLabels) kv.Value.style.display = DisplayStyle.None;
+    }
+
+    /// Samples the average hue of each weather notification banner so the
+    /// band color matches the sprite the user would see in the HUD. Runs
+    /// once on first paint; silently falls back to the hardcoded tints if
+    /// the sprite texture isn't readable (common for asset-bundle sprites).
+    private void EnsureWeatherColorsSampled()
+    {
+        if (_weatherColorsSampled) return;
+        _weatherColorsSampled = true;
+
+        var drought = TrySampleDominantColor(_icons.TryGet("weather.drought"));
+        if (drought.HasValue) _droughtColor = WithAlpha(drought.Value, WeatherBandAlpha);
+
+        var badtide = TrySampleDominantColor(_icons.TryGet("weather.badtide"));
+        if (badtide.HasValue) _badtideColor = WithAlpha(badtide.Value, WeatherBandAlpha);
+    }
+
+    private static Color? TrySampleDominantColor(Sprite? sprite)
+    {
+        if (sprite == null) return null;
+        try
+        {
+            var tex = sprite.texture;
+            if (tex == null || !tex.isReadable) return null;
+            var srcRect = sprite.textureRect;
+            int x = (int)srcRect.x, y = (int)srcRect.y;
+            int w = (int)srcRect.width, h = (int)srcRect.height;
+            if (w <= 0 || h <= 0) return null;
+            var pixels = tex.GetPixels(x, y, w, h);
+            // Alpha-weighted average so transparent edges don't wash out
+            // the hue toward zero.
+            float r = 0, g = 0, b = 0, totalA = 0;
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                var p = pixels[i];
+                r += p.r * p.a;
+                g += p.g * p.a;
+                b += p.b * p.a;
+                totalA += p.a;
+            }
+            if (totalA <= 0) return null;
+            return new Color(r / totalA, g / totalA, b / totalA, 1f);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// Refreshes the vertical cursor line and tooltip panel for the current
@@ -399,6 +460,79 @@ public sealed class GraphsChart
         if (_tooltipBox != null) _tooltipBox.style.display = DisplayStyle.None;
     }
 
+    private readonly struct ScaleRange
+    {
+        public readonly float Min;
+        public readonly float Max;
+        public ScaleRange(float min, float max) { Min = min; Max = max; }
+        public float Span => Max - Min;
+    }
+
+    /// Computes a per-ScaleGroup y-axis range for the visible window.
+    /// Bounds are **soft**: a metric's `FixedMin` / `FixedMax` anchor the
+    /// axis at known natural bounds, but the chart still expands if the
+    /// data goes outside them. Floor defaults to 0 so positive-only metrics
+    /// don't lift off the baseline; it drops as needed when a metric goes
+    /// negative or declares a lower bound. Groups with no visible metric
+    /// are omitted.
+    private Dictionary<string, ScaleRange> ComputeScaleRanges(
+        MetricHistory history, int startIdx, int endIdx)
+    {
+        var observedMin = new Dictionary<string, float>(StringComparer.Ordinal);
+        var observedMax = new Dictionary<string, float>(StringComparer.Ordinal);
+        var declaredMin = new Dictionary<string, float>(StringComparer.Ordinal);
+        var declaredMax = new Dictionary<string, float>(StringComparer.Ordinal);
+
+        var metrics = _registry.Metrics;
+        for (int m = 0; m < metrics.Count; m++)
+        {
+            var def = metrics[m];
+            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+
+            if (def.FixedMax.HasValue)
+            {
+                if (!declaredMax.TryGetValue(def.ScaleGroup, out var prior) || def.FixedMax.Value > prior)
+                    declaredMax[def.ScaleGroup] = def.FixedMax.Value;
+            }
+            if (def.FixedMin.HasValue)
+            {
+                if (!declaredMin.TryGetValue(def.ScaleGroup, out var prior) || def.FixedMin.Value < prior)
+                    declaredMin[def.ScaleGroup] = def.FixedMin.Value;
+            }
+
+            if (!observedMin.ContainsKey(def.ScaleGroup))
+            {
+                observedMin[def.ScaleGroup] = 0f;
+                observedMax[def.ScaleGroup] = 0f;
+            }
+            float gMin = observedMin[def.ScaleGroup];
+            float gMax = observedMax[def.ScaleGroup];
+
+            for (int i = startIdx; i < endIdx; i++)
+            {
+                float v = history.ReadValue(i, m);
+                if (float.IsNaN(v)) continue;
+                if (v < gMin) gMin = v;
+                if (v > gMax) gMax = v;
+            }
+            observedMin[def.ScaleGroup] = gMin;
+            observedMax[def.ScaleGroup] = gMax;
+        }
+
+        var ranges = new Dictionary<string, ScaleRange>(StringComparer.Ordinal);
+        foreach (var kv in observedMax)
+        {
+            // Soft bounds: declared values anchor the axis, but observed
+            // data outside them wins — the chart never clips real samples.
+            float max = kv.Value;
+            if (declaredMax.TryGetValue(kv.Key, out var declMax) && declMax > max) max = declMax;
+            float min = observedMin[kv.Key];
+            if (declaredMin.TryGetValue(kv.Key, out var declMin) && declMin < min) min = declMin;
+            ranges[kv.Key] = new ScaleRange(min, max);
+        }
+        return ranges;
+    }
+
     /// Inner drawing area (chart rect minus the right-side gutter where
     /// line-end icons live). All drawing + sample→x mapping uses this.
     private static Rect DrawArea(Rect contentRect)
@@ -413,6 +547,8 @@ public sealed class GraphsChart
         var rect = ctx.visualElement.contentRect;
         if (rect.width <= 0 || rect.height <= 0) return;
         var draw = DrawArea(rect);
+
+        EnsureWeatherColorsSampled();
 
         var history = _sampler.History;
         if (history.Count == 0) return;
@@ -452,27 +588,12 @@ public sealed class GraphsChart
         int sampleCount = endIdx - startIdx;
         if (sampleCount < 1) return;
 
-        // Pass 1: compute per-ScaleGroup max across every visible metric in
-        // that group. Min is pinned to 0 so y=0 always represents "no stock /
-        // no beavers / no hunger satisfaction". ScaleGroup defaults to the
-        // Category name but metrics can override (e.g. Bots shares the
-        // Population scale while having its own legend section).
-        var scaleMax = new Dictionary<string, float>(StringComparer.Ordinal);
+        // Per-ScaleGroup range. Floor is 0 unless a metric goes negative
+        // (wellbeing can dip below zero for miserable beavers). Ceiling is
+        // the observed max or a metric-declared FixedMax (so 0..1
+        // satisfaction lines don't stretch to fill the chart when tiny).
+        var ranges = ComputeScaleRanges(history, startIdx, endIdx);
         var metrics = _registry.Metrics;
-        for (int m = 0; m < metrics.Count; m++)
-        {
-            var def = metrics[m];
-            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
-
-            scaleMax.TryGetValue(def.ScaleGroup, out var cur);
-            for (int i = startIdx; i < endIdx; i++)
-            {
-                float v = history.ReadValue(i, m);
-                if (float.IsNaN(v)) continue;
-                if (v > cur) cur = v;
-            }
-            scaleMax[def.ScaleGroup] = cur;
-        }
 
         // Top gets a small inset so a value at catMax isn't clipped.
         // Bottom stays flush so y=0 always sits at the real chart bottom.
@@ -481,12 +602,12 @@ public sealed class GraphsChart
         float innerBottom = rect.y + rect.height;
         float innerHeight = innerBottom - innerTop;
 
-        // Pass 2: draw each visible metric using its category's shared scale.
+        // Pass 2: draw each visible metric using its group's range.
         for (int m = 0; m < metrics.Count; m++)
         {
             var def = metrics[m];
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
-            if (!scaleMax.TryGetValue(def.ScaleGroup, out var catMax)) continue;
+            if (!ranges.TryGetValue(def.ScaleGroup, out var range)) continue;
 
             Color color = GraphColors.ColorFor(def.Id, def.Category);
 
@@ -498,10 +619,11 @@ public sealed class GraphsChart
                 if (float.IsNaN(v)) { havePrev = false; continue; }
                 float t = history.ReadTimestamp(i);
                 float x = rect.x + ((t - startT) / span) * rect.width;
-                // 0 always anchors to the bottom of the chart; catMax to the
-                // top. A value of catMax/2 lands halfway up regardless of what
-                // other metrics in the category are doing.
-                float norm = catMax > 0 ? v / catMax : 0f;
+                // The group's min anchors to the bottom of the chart; its
+                // max to the top. Min defaults to 0 but drops below 0 when
+                // wellbeing / other metrics go negative, so a negative line
+                // plots below the zero baseline instead of running off-chart.
+                float norm = range.Span > 0 ? (v - range.Min) / range.Span : 0f;
                 float y = innerBottom - norm * innerHeight;
 
                 FillRect(ctx, new Rect(x - 1, y - 1, 2, 2), color);
@@ -540,7 +662,7 @@ public sealed class GraphsChart
         }
     }
 
-    private static void DrawWeatherBands(
+    private void DrawWeatherBands(
         MeshGenerationContext ctx, Rect rect, MetricHistory history,
         int startIdx, int endIdx, float startT, float endT)
     {
@@ -564,14 +686,76 @@ public sealed class GraphsChart
                 float x1 = rect.x + ((t1 - startT) / span) * rect.width;
                 var color = runWeather switch
                 {
-                    MetricHistory.WeatherDrought => DroughtColor,
-                    MetricHistory.WeatherBadtide => BadtideColor,
-                    _                            => TemperateColor,
+                    MetricHistory.WeatherDrought => _droughtColor,
+                    MetricHistory.WeatherBadtide => _badtideColor,
+                    _                            => default,
                 };
-                FillRect(ctx, new Rect(x0, rect.y, x1 - x0, rect.height), color);
+                if (color.a > 0)
+                    FillRoundedRect(ctx, new Rect(x0, rect.y, x1 - x0, rect.height), WeatherBandRadius, color);
             }
             runStart = i;
             runWeather = w;
+        }
+    }
+
+    /// Axis-aligned rounded rectangle. Constructed as three axis-aligned
+    /// quads (center + top strip + bottom strip) plus four quarter-circle
+    /// triangle fans for the corners.
+    private static void FillRoundedRect(
+        MeshGenerationContext ctx, Rect rect, float radius, Color color)
+    {
+        if (color.a <= 0 || rect.width <= 0 || rect.height <= 0) return;
+
+        radius = Mathf.Min(radius, Mathf.Min(rect.width, rect.height) * 0.5f);
+        if (radius <= 0)
+        {
+            FillRect(ctx, rect, color);
+            return;
+        }
+
+        // Full-width center strip (covers everything except the top and
+        // bottom `radius` slabs, which need to accommodate the corner arcs).
+        FillRect(ctx, new Rect(rect.x, rect.y + radius, rect.width, rect.height - 2 * radius), color);
+        // Top + bottom strips, inset horizontally by radius so the corners
+        // can round inward.
+        FillRect(ctx, new Rect(rect.x + radius, rect.y, rect.width - 2 * radius, radius), color);
+        FillRect(ctx, new Rect(rect.x + radius, rect.yMax - radius, rect.width - 2 * radius, radius), color);
+
+        // Corner fans. y-axis is inverted in UIToolkit (y grows downward),
+        // but standard sin/cos still works — we just read "top" as the
+        // lower-y side and "bottom" as the higher-y side.
+        FillCornerFan(ctx, new Vector2(rect.x + radius,     rect.y + radius),     radius, 180f, 270f, color); // top-left
+        FillCornerFan(ctx, new Vector2(rect.xMax - radius,  rect.y + radius),     radius, 270f, 360f, color); // top-right
+        FillCornerFan(ctx, new Vector2(rect.xMax - radius,  rect.yMax - radius),  radius,   0f,  90f, color); // bottom-right
+        FillCornerFan(ctx, new Vector2(rect.x + radius,     rect.yMax - radius),  radius,  90f, 180f, color); // bottom-left
+    }
+
+    private static void FillCornerFan(
+        MeshGenerationContext ctx, Vector2 center, float radius,
+        float startAngleDeg, float endAngleDeg, Color color)
+    {
+        if (color.a <= 0 || radius <= 0) return;
+        const int segments = 4;
+        var mesh = ctx.Allocate(segments + 2, segments * 3);
+        mesh.SetNextVertex(new Vertex { position = new Vector3(center.x, center.y, Vertex.nearZ), tint = color });
+        for (int i = 0; i <= segments; i++)
+        {
+            float t = i / (float)segments;
+            float angle = Mathf.Lerp(startAngleDeg, endAngleDeg, t) * Mathf.Deg2Rad;
+            mesh.SetNextVertex(new Vertex
+            {
+                position = new Vector3(
+                    center.x + Mathf.Cos(angle) * radius,
+                    center.y + Mathf.Sin(angle) * radius,
+                    Vertex.nearZ),
+                tint = color,
+            });
+        }
+        for (ushort i = 0; i < segments; i++)
+        {
+            mesh.SetNextIndex(0);
+            mesh.SetNextIndex((ushort)(i + 1));
+            mesh.SetNextIndex((ushort)(i + 2));
         }
     }
 
