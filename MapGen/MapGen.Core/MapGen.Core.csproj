@@ -5,5 +5,16 @@
     <LangVersion>preview</LangVersion>
     <RootNamespace>MapGen</RootNamespace>
     <AssemblyName>MapGen.Core</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <!-- Define polyfill for IsExternalInit (needed for init-only properties in netstandard2.1) -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);INIT_PROPERTY_SUPPORT</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Support internal visibility for tests -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="MapGen.Core.Tests" />
+  </ItemGroup>
 </Project>
