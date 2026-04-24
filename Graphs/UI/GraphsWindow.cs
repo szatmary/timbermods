@@ -173,7 +173,7 @@ public sealed class GraphsWindow : IPanelController
         body.Add(chartSlot);
 
         var legendSlot = new VisualElement { name = "graphs-legend-slot" };
-        legendSlot.style.width = 320;
+        legendSlot.style.width = 230;
         legendSlot.style.marginRight = 10;
         legendSlot.style.marginTop = 10;
         legendSlot.style.marginBottom = 10;
