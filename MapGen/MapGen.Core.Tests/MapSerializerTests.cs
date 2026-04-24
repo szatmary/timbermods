@@ -100,6 +100,54 @@ public class MapSerializerTests
         finally { File.Delete(path); }
     }
 
+    [Fact]
+    public void WorldJson_terrain_voxel_count_matches_W_H_Zmax()
+    {
+        var map = MakeMinimalMap(16, 16);
+        var path = TempPath();
+        try
+        {
+            MapSerializer.Write(map, path, "1.0.13.0-test");
+            using var fs = File.OpenRead(path);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Read);
+            using var s = zip.GetEntry("world.json")!.Open();
+            using var doc = JsonDocument.Parse(s);
+            var arr = doc.RootElement
+                .GetProperty("Singletons")
+                .GetProperty("TerrainMap")
+                .GetProperty("Voxels")
+                .GetProperty("Array")
+                .GetString()!;
+            var tokens = arr.Split(' ');
+            int expected = 16 * 16 * 8;  // height 4 + 4 headroom = zmax 8
+            Assert.Equal(expected, tokens.Length);
+            int onesInFirstFour = tokens.Take(16 * 16 * 4).Count(t => t == "1");
+            Assert.Equal(16 * 16 * 4, onesInFirstFour);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void WorldJson_top_level_has_required_fields()
+    {
+        var map = MakeMinimalMap();
+        var path = TempPath();
+        try
+        {
+            MapSerializer.Write(map, path, "1.0.13.0-test");
+            using var fs = File.OpenRead(path);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Read);
+            using var s = zip.GetEntry("world.json")!.Open();
+            using var doc = JsonDocument.Parse(s);
+            var root = doc.RootElement;
+            Assert.Equal("1.0.13.0-test", root.GetProperty("GameVersion").GetString());
+            Assert.True(root.TryGetProperty("Timestamp", out _));
+            Assert.True(root.TryGetProperty("Singletons", out _));
+            Assert.True(root.TryGetProperty("Entities", out _));
+        }
+        finally { File.Delete(path); }
+    }
+
     private static MapData MakeMinimalMap(int w = 32, int h = 32)
     {
         var map = new MapData(w, h, "TEST");

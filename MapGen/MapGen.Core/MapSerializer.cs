@@ -62,20 +62,97 @@ public static class MapSerializer
 
     private static void WriteWorldJson(Stream s, MapData map, string gameVersion)
     {
-        // Stub for now — Tasks 9-11 fill this in.
         using var w = new Utf8JsonWriter(s, new JsonWriterOptions { Indented = false });
         w.WriteStartObject();
         w.WriteString("GameVersion", gameVersion);
         w.WriteString("Timestamp", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
-        w.WriteStartObject("Singletons");
-        w.WriteEndObject();
+        WriteSingletons(w, map);
         w.WriteStartArray("Entities");
-        w.WriteEndArray();
+        w.WriteEndArray();  // entities filled in Task 11
         w.WriteEndObject();
     }
 
     private static readonly byte[] StubJpegBytes = HexToBytes(
         "ffd8ffe000104a46494600010100000100010000ffdb004300080606070605080707070909080a0c140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c20242e2720222c231c1c2837292c30313434341f27393d38323c2e333432ffdb0043010909090c0b0c180d0d1832211c213232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232ffc00011080001000103012200021101031101ffc4001f0000010501010101010100000000000000000102030405060708090a0bffc400b5100002010303020403050504040000017d01020300041105122131410613516107227114328191a1082342b1c11552d1f02433627282090a161718191a25262728292a3435363738393a434445464748494a535455565758595a636465666768696a737475767778797a838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae1e2e3e4e5e6e7e8e9eaf1f2f3f4f5f6f7f8f9faffc4001f0100030101010101010101010000000000000102030405060708090a0bffc400b51100020102040403040705040400010277000102031104052131061241510761711322328108144291a1b1c109233352f0156272d10a162434e125f11718191a262728292a35363738393a434445464748494a535455565758595a636465666768696a737475767778797a82838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae2e3e4e5e6e7e8e9eaf2f3f4f5f6f7f8f9faffda000c03010002110311003f00fbfeffd9");
+
+    // -------------------------------------------------------------------------
+    // Singletons
+    // -------------------------------------------------------------------------
+
+    private static void WriteSingletons(Utf8JsonWriter w, MapData map)
+    {
+        w.WriteStartObject("Singletons");
+
+        w.WriteStartObject("MapSize");
+        w.WriteStartObject("Size");
+        w.WriteNumber("X", map.Width);
+        w.WriteNumber("Y", map.Height);
+        w.WriteEndObject();
+        w.WriteEndObject();
+
+        WriteTerrainMap(w, map);
+
+        // Other singletons added in Task 10.
+
+        w.WriteEndObject();
+    }
+
+    private static void WriteTerrainMap(Utf8JsonWriter w, MapData map)
+    {
+        int zmax = ComputeMaxZ(map);
+        w.WriteStartObject("TerrainMap");
+        w.WriteStartObject("Voxels");
+        w.WriteString("Array", BuildVoxelArrayString(map, zmax));
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static int ComputeMaxZ(MapData map)
+    {
+        int max = 1;
+        for (int y = 0; y < map.Height; y++)
+        for (int x = 0; x < map.Width; x++)
+        {
+            var spans = map.Columns[map.ColumnIndex(x, y)];
+            for (int i = 0; i < spans.Count; i++)
+            {
+                int top = spans[i].TopExclusive;
+                if (top > max) max = top;
+            }
+        }
+        int withRoom = max + 4;
+        if (withRoom > 32) withRoom = 32;
+        return withRoom;
+    }
+
+    /// Layout assumption: z-major, then y-major, then x. The implementer
+    /// MUST verify by comparing against a known reference sample. If the
+    /// game refuses to load with this layout, swap to (y, x, z) or (x, y, z).
+    private static string BuildVoxelArrayString(MapData map, int zmax)
+    {
+        var sb = new StringBuilder(map.Width * map.Height * zmax * 2);
+        bool first = true;
+        for (int z = 0; z < zmax; z++)
+        for (int y = 0; y < map.Height; y++)
+        for (int x = 0; x < map.Width; x++)
+        {
+            if (!first) sb.Append(' ');
+            first = false;
+            sb.Append(IsSolidAt(map, x, y, z) ? '1' : '0');
+        }
+        return sb.ToString();
+    }
+
+    private static bool IsSolidAt(MapData map, int x, int y, int z)
+    {
+        var spans = map.Columns[map.ColumnIndex(x, y)];
+        for (int i = 0; i < spans.Count; i++)
+        {
+            var span = spans[i];
+            if (z >= span.Bottom && z < span.TopExclusive) return true;
+        }
+        return false;
+    }
 
     private static byte[] HexToBytes(string hex)
     {
