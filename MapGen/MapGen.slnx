@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MapGen.Core.Tests/MapGen.Core.Tests.csproj" />
+  <Project Path="MapGen.Core/MapGen.Core.csproj" />
+  <Project Path="MapGen.Preview/MapGen.Preview.csproj" />
+</Solution>
