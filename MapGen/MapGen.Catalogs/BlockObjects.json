@@ -1,8 +1,8 @@
 {
-  "slope": { "key": "slope", "blueprintKey": "BlockObject.Slope", "faction": "Both", "weight": 1.0 },
-  "unstable_core": { "key": "unstable_core", "blueprintKey": "BlockObject.UnstableCore", "faction": "Both", "weight": 1.0 },
-  "geothermal_vent": { "key": "geothermal_vent", "blueprintKey": "BlockObject.GeothermalVent", "faction": "Both", "weight": 1.0 },
-  "relic": { "key": "relic", "blueprintKey": "BlockObject.Relic", "faction": "Both", "weight": 1.0 },
-  "blockage": { "key": "blockage", "blueprintKey": "BlockObject.Blockage", "faction": "Both", "weight": 1.0 },
-  "start_marker": { "key": "start_marker", "blueprintKey": "BlockObject.StartingLocation", "faction": "Both", "weight": 1.0 }
+  "slope": { "key": "slope", "blueprintKey": "Slope", "weight": 1.0 },
+  "unstable_core": { "key": "unstable_core", "blueprintKey": "UnstableCore", "weight": 1.0 },
+  "geothermal_vent": { "key": "geothermal_vent", "blueprintKey": "GeothermalField", "weight": 1.0 },
+  "relic": { "key": "relic", "blueprintKey": "SmallRelic", "weight": 1.0 },
+  "blockage": { "key": "blockage", "blueprintKey": "Blockage", "weight": 1.0 },
+  "start_marker": { "key": "start_marker", "blueprintKey": "StartingLocation", "weight": 1.0 }
 }

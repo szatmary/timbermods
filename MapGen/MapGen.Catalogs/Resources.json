@@ -1,9 +1,3 @@
 [
-  { "key": "berries", "blueprintKey": "NaturalResource.Berries.Folktails", "faction": "Folktails", "weight": 1.0 },
-  { "key": "blueberries", "blueprintKey": "NaturalResource.Blueberries.IronTeeth", "faction": "IronTeeth", "weight": 1.0 },
-  { "key": "carrots", "blueprintKey": "NaturalResource.Carrots", "faction": "Both", "weight": 0.7 },
-  { "key": "chestnuts", "blueprintKey": "NaturalResource.Chestnuts", "faction": "Both", "weight": 0.5 },
-  { "key": "mushrooms", "blueprintKey": "NaturalResource.Mushrooms", "faction": "Both", "weight": 0.5 },
-  { "key": "cactus", "blueprintKey": "NaturalResource.Cactus", "faction": "Both", "weight": 0.3 },
-  { "key": "dandelion", "blueprintKey": "NaturalResource.Dandelion", "faction": "Both", "weight": 0.2 }
+  { "key": "berries", "blueprintKey": "BlueberryBush", "weight": 1.0 }
 ]

@@ -1,6 +1,7 @@
 [
-  { "key": "maple", "blueprintKey": "NaturalResource.Maple.Folktails", "faction": "Folktails", "weight": 1.0 },
-  { "key": "pine", "blueprintKey": "NaturalResource.Pine.Folktails", "faction": "Both", "weight": 1.0 },
-  { "key": "birch", "blueprintKey": "NaturalResource.Birch.IronTeeth", "faction": "IronTeeth", "weight": 1.0 },
-  { "key": "dead_stump", "blueprintKey": "NaturalResource.DeadTree", "faction": "Both", "weight": 0.5 }
+  { "key": "maple", "blueprintKey": "Maple", "weight": 1.0 },
+  { "key": "pine", "blueprintKey": "Pine", "weight": 1.0 },
+  { "key": "birch", "blueprintKey": "Birch", "weight": 1.0 },
+  { "key": "oak", "blueprintKey": "Oak", "weight": 1.0 },
+  { "key": "dead_stump", "blueprintKey": "Pine", "weight": 0.3 }
 ]

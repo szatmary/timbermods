@@ -1,6 +1,11 @@
 [
-  { "key": "ruined_shelter", "blueprintKey": "Ruin.Shelter", "faction": "Both", "weight": 1.0, "footprintW": 1, "footprintH": 1 },
-  { "key": "collapsed_wall", "blueprintKey": "Ruin.Wall", "faction": "Both", "weight": 1.0, "footprintW": 2, "footprintH": 1 },
-  { "key": "broken_platform", "blueprintKey": "Ruin.Platform", "faction": "Both", "weight": 0.7, "footprintW": 2, "footprintH": 2 },
-  { "key": "ruined_pipe", "blueprintKey": "Ruin.Pipe", "faction": "Both", "weight": 0.5, "footprintW": 1, "footprintH": 1 }
+  { "key": "ruin_h1", "blueprintKey": "RuinColumnH1", "weight": 1.0, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h2", "blueprintKey": "RuinColumnH2", "weight": 1.0, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h3", "blueprintKey": "RuinColumnH3", "weight": 1.0, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h4", "blueprintKey": "RuinColumnH4", "weight": 0.7, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h5", "blueprintKey": "RuinColumnH5", "weight": 0.5, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h6", "blueprintKey": "RuinColumnH6", "weight": 0.3, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h7", "blueprintKey": "RuinColumnH7", "weight": 0.2, "footprintW": 1, "footprintH": 1 },
+  { "key": "ruin_h8", "blueprintKey": "RuinColumnH8", "weight": 0.1, "footprintW": 1, "footprintH": 1 },
+  { "key": "underground_ruins", "blueprintKey": "UndergroundRuins", "weight": 0.5, "footprintW": 1, "footprintH": 1 }
 ]
