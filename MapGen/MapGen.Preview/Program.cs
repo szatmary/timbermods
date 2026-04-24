@@ -9,7 +9,8 @@ public static class Program
     public static int Main(string[] args)
     {
         int width = 128, height = 128;
-        uint seedStart = 1, seedEnd = 1;
+        string? singleSeed = null;
+        int count = 1;
         string outDir = "previews";
         string? catalogDir = null;
 
@@ -19,16 +20,13 @@ public static class Program
             {
                 case "--width": case "-w": width = int.Parse(args[++i]); break;
                 case "--height": case "-h": height = int.Parse(args[++i]); break;
-                case "--seed": case "-s": seedStart = seedEnd = uint.Parse(args[++i]); break;
-                case "--seed-range":
-                    var parts = args[++i].Split('-');
-                    seedStart = uint.Parse(parts[0]);
-                    seedEnd = parts.Length > 1 ? uint.Parse(parts[1]) : seedStart;
-                    break;
+                case "--seed": case "-s": singleSeed = args[++i]; break;
+                case "--count": case "-n": count = int.Parse(args[++i]); break;
                 case "--out": case "-o": outDir = args[++i]; break;
                 case "--catalog": case "-c": catalogDir = args[++i]; break;
                 default:
                     Console.Error.WriteLine($"Unknown argument: {args[i]}");
+                    Console.Error.WriteLine("Usage: preview [--width N] [--height N] [--seed STR] [--count N] [--out DIR] [--catalog DIR]");
                     return 1;
             }
         }
@@ -40,23 +38,26 @@ public static class Program
         var gen = new MapGenerator(catalog);
 
         int successes = 0;
-        for (uint s = seedStart; s <= seedEnd; s++)
+        int runs = singleSeed != null ? 1 : count;
+        for (int i = 0; i < runs; i++)
         {
-            var cfg = new GenerationConfig { Width = width, Height = height, Seed = s };
+            var cfg = new GenerationConfig { Width = width, Height = height };
+            if (singleSeed != null) cfg.Seed = singleSeed;
             var result = gen.Generate(cfg);
             if (result.Status == GenerationStatus.Success && result.Map != null)
             {
-                var outPath = Path.Combine(outDir, $"seed-{result.ActualSeedUsed}-{width}x{height}.png");
+                var safeSeed = result.ActualSeedUsed.Replace("/", "_").Replace("\\", "_");
+                var outPath = Path.Combine(outDir, $"seed-{safeSeed}-{width}x{height}.png");
                 Renderer.RenderToPng(result.Map, outPath);
-                Console.WriteLine($"OK  seed={s} (actual={result.ActualSeedUsed}) -> {outPath}");
+                Console.WriteLine($"OK  seed={result.ActualSeedUsed} -> {outPath}");
                 successes++;
             }
             else
             {
-                Console.Error.WriteLine($"FAIL seed={s}: {result.FailureReason}");
+                Console.Error.WriteLine($"FAIL: {result.FailureReason}");
             }
         }
-        Console.WriteLine($"Done: {successes}/{seedEnd - seedStart + 1} succeeded.");
+        Console.WriteLine($"Done: {successes}/{runs} succeeded.");
         return successes > 0 ? 0 : 2;
     }
 
@@ -66,37 +67,32 @@ public static class Program
         {
             Trees = new System.Collections.Generic.List<CatalogEntry>
             {
-                new() { Key = "maple", BlueprintKey = "Tree.Maple.Folktails", Faction = Faction.Folktails, Weight = 1 },
-                new() { Key = "pine", BlueprintKey = "Tree.Pine", Faction = Faction.Both, Weight = 1 },
-                new() { Key = "birch", BlueprintKey = "Tree.Birch.IronTeeth", Faction = Faction.IronTeeth, Weight = 1 },
-                new() { Key = "dead_stump", BlueprintKey = "Tree.Dead", Faction = Faction.Both, Weight = 0.5f },
+                new() { Key = "maple", BlueprintKey = "Maple", Weight = 1 },
+                new() { Key = "pine", BlueprintKey = "Pine", Weight = 1 },
+                new() { Key = "birch", BlueprintKey = "Birch", Weight = 1 },
+                new() { Key = "oak", BlueprintKey = "Oak", Weight = 1 },
+                new() { Key = "dead_stump", BlueprintKey = "Pine", Weight = 0.3f },
             },
             Resources = new System.Collections.Generic.List<CatalogEntry>
             {
-                new() { Key = "berries", BlueprintKey = "Res.Berries.Folktails", Faction = Faction.Folktails, Weight = 1 },
-                new() { Key = "blueberries", BlueprintKey = "Res.Blueberries.IronTeeth", Faction = Faction.IronTeeth, Weight = 1 },
-                new() { Key = "mushrooms", BlueprintKey = "Res.Mushrooms", Faction = Faction.Both, Weight = 0.5f },
-                new() { Key = "carrots", BlueprintKey = "Res.Carrots", Faction = Faction.Both, Weight = 0.5f },
-                new() { Key = "cactus", BlueprintKey = "Res.Cactus", Faction = Faction.Both, Weight = 0.5f },
-                new() { Key = "dandelion", BlueprintKey = "Res.Dandelion", Faction = Faction.Both, Weight = 0.5f },
-                new() { Key = "chestnuts", BlueprintKey = "Res.Chestnuts", Faction = Faction.Both, Weight = 0.5f },
+                new() { Key = "berries", BlueprintKey = "BlueberryBush", Weight = 1 },
             },
             Thorns = new System.Collections.Generic.List<CatalogEntry>
             {
-                new() { Key = "thorns", BlueprintKey = "Res.Thorns", Faction = Faction.Both, Weight = 1 },
+                new() { Key = "thorns", BlueprintKey = "Thorns", Weight = 1 },
             },
             Ruins = new System.Collections.Generic.List<RuinCatalogEntry>
             {
-                new() { Key = "shelter", BlueprintKey = "Ruin.Shelter", Faction = Faction.Both, Weight = 1 },
+                new() { Key = "ruin_h3", BlueprintKey = "RuinColumnH3", Weight = 1 },
             },
             BlockObjects = new System.Collections.Generic.Dictionary<string, CatalogEntry>
             {
-                { "blockage", new() { Key = "blockage", BlueprintKey = "BO.Blockage", Faction = Faction.Both, Weight = 1 } },
-                { "relic", new() { Key = "relic", BlueprintKey = "BO.Relic", Faction = Faction.Both, Weight = 1 } },
-                { "unstable_core", new() { Key = "unstable_core", BlueprintKey = "BO.Core", Faction = Faction.Both, Weight = 1 } },
-                { "geothermal_vent", new() { Key = "geothermal_vent", BlueprintKey = "BO.Vent", Faction = Faction.Both, Weight = 1 } },
-                { "slope", new() { Key = "slope", BlueprintKey = "BO.Slope", Faction = Faction.Both, Weight = 1 } },
-                { "start_marker", new() { Key = "start_marker", BlueprintKey = "BO.Start", Faction = Faction.Both, Weight = 1 } },
+                { "blockage", new() { Key = "blockage", BlueprintKey = "Blockage", Weight = 1 } },
+                { "relic", new() { Key = "relic", BlueprintKey = "SmallRelic", Weight = 1 } },
+                { "unstable_core", new() { Key = "unstable_core", BlueprintKey = "UnstableCore", Weight = 1 } },
+                { "geothermal_vent", new() { Key = "geothermal_vent", BlueprintKey = "GeothermalField", Weight = 1 } },
+                { "slope", new() { Key = "slope", BlueprintKey = "Slope", Weight = 1 } },
+                { "start_marker", new() { Key = "start_marker", BlueprintKey = "StartingLocation", Weight = 1 } },
             },
         };
     }
