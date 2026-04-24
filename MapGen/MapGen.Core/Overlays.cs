@@ -291,4 +291,97 @@ public static class Overlays
 
     private static Orientation RandomOrientation(ref Rng rng) =>
         (Orientation)rng.NextRange(0, 4);
+
+    // ---------- Unstable cores (spec section 5.7) ----------
+
+    public static void PlaceUnstableCores(MapData map, Catalog catalog, ref Rng rng)
+    {
+        if (!catalog.BlockObjects.TryGetValue("unstable_core", out var entry)) return;
+        int area = map.Width * map.Height;
+        int count = (int)MathF.Round(area / 20000f) + rng.NextRange(-1, 2);
+        if (count <= 0) return;
+
+        int attempts = count * 20;
+        int placed = 0;
+        const float MinSpacing = 20f;
+        var positions = new List<GridCoord>();
+        for (int a = 0; a < attempts && placed < count; a++)
+        {
+            int vx = rng.NextRange(0, map.Width);
+            int vy = rng.NextRange(0, map.Height);
+            var b = map.Biomes[map.MetaIndex(vx / 8, vy / 8)];
+            if (b != Biome.Rocky && b != Biome.Badland) continue;
+            if (WithinOfStart(map, vx, vy, radius: 15)) continue;
+            if (TooClose(positions, vx, vy, MinSpacing)) continue;
+            if (!IsPlaceableCell(map, vx, vy)) continue;
+            int z = map.TopHeight(vx, vy) + 1;
+            map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                new VoxelCoord(vx, vy, z), Orientation.North, EntityKind.UnstableCore));
+            positions.Add(new GridCoord(vx, vy));
+            placed++;
+        }
+    }
+
+    public static void PlaceGeothermalVents(MapData map, Catalog catalog, ref Rng rng)
+    {
+        if (!catalog.BlockObjects.TryGetValue("geothermal_vent", out var entry)) return;
+        int area = map.Width * map.Height;
+        int count = (int)MathF.Round(area / 30000f) + rng.NextRange(-1, 2);
+        if (count <= 0) return;
+
+        int attempts = count * 20;
+        int placed = 0;
+        const float MinSpacing = 25f;
+        var positions = new List<GridCoord>();
+        for (int a = 0; a < attempts && placed < count; a++)
+        {
+            int vx = rng.NextRange(0, map.Width);
+            int vy = rng.NextRange(0, map.Height);
+            var b = map.Biomes[map.MetaIndex(vx / 8, vy / 8)];
+            if (b != Biome.Badland && b != Biome.Rocky) continue;
+            if (WithinOfStart(map, vx, vy, radius: 20)) continue;
+            if (TooClose(positions, vx, vy, MinSpacing)) continue;
+            if (!IsPlaceableCell(map, vx, vy)) continue;
+            int z = map.TopHeight(vx, vy) + 1;
+            map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                new VoxelCoord(vx, vy, z), Orientation.North, EntityKind.GeothermalVent));
+            positions.Add(new GridCoord(vx, vy));
+            placed++;
+        }
+    }
+
+    private static bool WithinOfStart(MapData map, int vx, int vy, int radius)
+    {
+        if (!map.StartMeta.HasValue) return false;
+        var sm = map.StartMeta.Value;
+        int sx = sm.X * MetaSize + MetaSize / 2;
+        int sy = sm.Y * MetaSize + MetaSize / 2;
+        int dx = vx - sx, dy = vy - sy;
+        return dx * dx + dy * dy <= radius * radius;
+    }
+
+    private static bool TooClose(List<GridCoord> positions, int vx, int vy, float minSpacing)
+    {
+        float sq = minSpacing * minSpacing;
+        foreach (var p in positions)
+        {
+            int dx = vx - p.X, dy = vy - p.Y;
+            if (dx * dx + dy * dy < sq) return true;
+        }
+        return false;
+    }
+
+    // ---------- Start marker ----------
+
+    public static void PlaceStartMarker(MapData map, Catalog catalog)
+    {
+        if (!map.StartMeta.HasValue) return;
+        if (!catalog.BlockObjects.TryGetValue("start_marker", out var entry)) return;
+        var sm = map.StartMeta.Value;
+        int vx = sm.X * MetaSize + MetaSize / 2;
+        int vy = sm.Y * MetaSize + MetaSize / 2;
+        int z = map.TopHeight(vx, vy) + 1;
+        map.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+            new VoxelCoord(vx, vy, z), Orientation.North, EntityKind.StartMarker));
+    }
 }
