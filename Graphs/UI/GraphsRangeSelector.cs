@@ -59,8 +59,11 @@ public sealed class GraphsRangeSelector
             btn.RemoveFromClassList("button-active");
 
         btn.style.minWidth = 96;
+        btn.style.height = 32;
         btn.style.marginLeft = 2;
         btn.style.marginRight = 2;
+        btn.style.paddingLeft = 8;
+        btn.style.paddingRight = 8;
     }
 
     public float? LookbackDays() => CurrentRange switch

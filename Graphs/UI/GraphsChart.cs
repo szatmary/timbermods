@@ -194,37 +194,47 @@ public sealed class GraphsChart
             candidates.Add((def, y, _legend.ResolveIcon(def)));
         }
 
-        // Sort by y and chain into groups where each adjacent pair's preferred
-        // y differs by less than one icon height — those would overlap if
-        // placed at their natural positions.
+        // Sort by preferred y ascending, then pack vertically so adjacent
+        // markers never overlap. Two-pass:
+        //   forward — y_i = max(preferred_i, y_{i-1} + MarkerHeight), clamped above
+        //   backward — if the last marker overflows the bottom, pull earlier
+        //              markers up by y_i = min(y_i, y_{i+1} - MarkerHeight)
+        // Together this guarantees no overlaps, every marker inside the chart
+        // when there's room, and sensible fallback when there isn't.
         candidates.Sort((a, b) => a.Y.CompareTo(b.Y));
         var stillVisible = new System.Collections.Generic.HashSet<string>();
         float gutterX = rect.xMax - GutterWidth + 3;
 
-        int i0 = 0;
-        while (i0 < candidates.Count)
+        float minY = draw.y + EndIconSize / 2f;
+        float maxY = draw.yMax - EndIconSize / 2f - EndLabelHeight;
+
+        float[] ys = new float[candidates.Count];
+        for (int i = 0; i < candidates.Count; i++) ys[i] = candidates[i].Y;
+
+        // forward push-down
+        if (ys.Length > 0) ys[0] = Mathf.Max(ys[0], minY);
+        for (int i = 1; i < ys.Length; i++)
+            ys[i] = Mathf.Max(ys[i], ys[i - 1] + MarkerHeight);
+
+        // backward pull-up if the bottom overflowed
+        if (ys.Length > 0 && ys[ys.Length - 1] > maxY)
         {
-            int i1 = i0;
-            while (i1 + 1 < candidates.Count &&
-                   candidates[i1 + 1].Y - candidates[i1].Y < MarkerHeight)
-                i1++;
-
-            int n = i1 - i0 + 1;
-            // Center the stack on the midpoint of the group's preferred y's;
-            // each marker's center offsets by MarkerHeight (icon + label)
-            // from its neighbour so labels never collide with icons below.
-            float groupCenter = (candidates[i0].Y + candidates[i1].Y) * 0.5f;
-            float stackHeight = (n - 1) * MarkerHeight;
-            float firstCenter = groupCenter - stackHeight * 0.5f;
-
-            for (int i = i0; i <= i1; i++)
+            ys[ys.Length - 1] = maxY;
+            for (int i = ys.Length - 2; i >= 0; i--)
+                ys[i] = Mathf.Min(ys[i], ys[i + 1] - MarkerHeight);
+            // second forward pass in case the top now overflows
+            if (ys[0] < minY)
             {
-                var c = candidates[i];
-                float centerY = firstCenter + (i - i0) * MarkerHeight;
-                // Keep the whole marker (icon + label) inside chart bounds.
-                centerY = Mathf.Clamp(centerY,
-                    draw.y + EndIconSize / 2f,
-                    draw.yMax - EndIconSize / 2f - EndLabelHeight);
+                ys[0] = minY;
+                for (int i = 1; i < ys.Length; i++)
+                    ys[i] = Mathf.Max(ys[i], ys[i - 1] + MarkerHeight);
+            }
+        }
+
+        for (int iIdx = 0; iIdx < candidates.Count; iIdx++)
+        {
+            var c = candidates[iIdx];
+            float centerY = ys[iIdx];
 
                 if (!_endIcons.TryGetValue(c.Def.Id, out var img))
                 {
@@ -282,8 +292,6 @@ public sealed class GraphsChart
                 vlabel.style.top = centerY + EndIconSize / 2f;
 
                 stillVisible.Add(c.Def.Id);
-            }
-            i0 = i1 + 1;
         }
 
         foreach (var (id, img) in _endIcons)
@@ -353,8 +361,9 @@ public sealed class GraphsChart
 
         _tooltipHeader.text = $"Day {sampleT:0.00}";
 
-        // Rebuild the metric rows. Cheap enough; called on MouseMoveEvent only.
-        foreach (var lbl in _tooltipRows) _tooltipBox.Remove(lbl);
+        // Rebuild the metric rows. RemoveFromHierarchy is safe even if the
+        // row somehow lost its parent (Remove() throws when it's not a child).
+        foreach (var lbl in _tooltipRows) lbl.RemoveFromHierarchy();
         _tooltipRows.Clear();
 
         var metrics = _registry.Metrics;
