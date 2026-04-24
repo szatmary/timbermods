@@ -311,6 +311,14 @@ public sealed class GraphsLegend
         return ResolveDisplayName(def, out _);
     }
 
+    /// Public so the chart can label its line-end positions with the
+    /// same icons the legend rows use.
+    public Sprite? ResolveIcon(MetricDefinition def)
+    {
+        ResolveDisplayName(def, out var icon);
+        return icon;
+    }
+
     private string ResolveDisplayName(MetricDefinition def, out Sprite? icon)
     {
         icon = _icons.TryGet(def.Id);

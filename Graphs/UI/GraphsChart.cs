@@ -28,6 +28,12 @@ public sealed class GraphsChart
     private Label? _tooltipHeader;
     private readonly System.Collections.Generic.List<Label> _tooltipRows = new();
 
+    // Per-metric icon that sits at the right edge of the chart next to the
+    // latest sample's y. Built lazily on first update; positioned on every
+    // repaint trigger.
+    private const float EndIconSize = 18f;
+    private readonly System.Collections.Generic.Dictionary<string, Image> _endIcons = new();
+
     public GraphsChart(
         MetricSampler sampler,
         GraphsRangeSelector range,
@@ -46,9 +52,10 @@ public sealed class GraphsChart
         _element.style.flexGrow = 1;
         _element.style.backgroundColor = new StyleColor(new Color(0.04f, 0.04f, 0.06f));
         _element.generateVisualContent += Draw;
-        _range.Changed += () => _element?.MarkDirtyRepaint();
-        _legend.Changed += () => _element?.MarkDirtyRepaint();
-        _sampler.OnSampled += () => _element?.MarkDirtyRepaint();
+        _range.Changed += OnRepaintTrigger;
+        _legend.Changed += OnRepaintTrigger;
+        _sampler.OnSampled += OnRepaintTrigger;
+        _element.RegisterCallback<GeometryChangedEvent>(_ => UpdateEndIcons());
 
         // Hover tracking: a vertical cursor line + a floating tooltip panel.
         _element.RegisterCallback<MouseMoveEvent>(e =>
@@ -97,7 +104,109 @@ public sealed class GraphsChart
         return _element;
     }
 
-    public void Repaint() => _element?.MarkDirtyRepaint();
+    public void Repaint()
+    {
+        _element?.MarkDirtyRepaint();
+        UpdateEndIcons();
+    }
+
+    private void OnRepaintTrigger()
+    {
+        _element?.MarkDirtyRepaint();
+        UpdateEndIcons();
+    }
+
+    /// For every visible metric with a last-sample position, place its icon
+    /// at the right edge of the chart at the line's final y. Hides icons of
+    /// metrics that aren't visible (or don't have an icon).
+    private void UpdateEndIcons()
+    {
+        if (_element is null) return;
+
+        var rect = _element.contentRect;
+        if (rect.width <= 0 || rect.height <= 0) { HideAllEndIcons(); return; }
+
+        var history = _sampler.History;
+        if (history.Count == 0) { HideAllEndIcons(); return; }
+
+        float latestT = history.ReadTimestamp(history.Count - 1);
+        float earliestT = history.ReadTimestamp(0);
+        float? lookback = _range.LookbackDays();
+        float startT = lookback.HasValue
+            ? System.Math.Max(latestT - lookback.Value, earliestT)
+            : earliestT;
+        int startIdx = history.FindFirstAtOrAfter(startT);
+        int endIdx = history.Count;
+        if (startIdx >= endIdx) { HideAllEndIcons(); return; }
+
+        // Recompute per-ScaleGroup max to match Draw(). Keep in sync.
+        var scaleMax = new System.Collections.Generic.Dictionary<string, float>(System.StringComparer.Ordinal);
+        var metrics = _registry.Metrics;
+        for (int m = 0; m < metrics.Count; m++)
+        {
+            var def = metrics[m];
+            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+            scaleMax.TryGetValue(def.ScaleGroup, out var cur);
+            for (int i = startIdx; i < endIdx; i++)
+            {
+                float v = history.ReadValue(i, m);
+                if (float.IsNaN(v)) continue;
+                if (v > cur) cur = v;
+            }
+            scaleMax[def.ScaleGroup] = cur;
+        }
+
+        const float topInset = 6f;
+        float innerTop = rect.y + topInset;
+        float innerBottom = rect.y + rect.height;
+        float innerHeight = innerBottom - innerTop;
+
+        var stillVisible = new System.Collections.Generic.HashSet<string>();
+        int last = endIdx - 1;
+
+        for (int m = 0; m < metrics.Count; m++)
+        {
+            var def = metrics[m];
+            if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
+            if (!scaleMax.TryGetValue(def.ScaleGroup, out var catMax)) continue;
+
+            float v = history.ReadValue(last, m);
+            if (float.IsNaN(v)) continue;
+
+            float norm = catMax > 0 ? v / catMax : 0f;
+            float y = innerBottom - norm * innerHeight;
+
+            var sprite = _legend.ResolveIcon(def);
+            if (sprite == null) continue;
+
+            if (!_endIcons.TryGetValue(def.Id, out var img))
+            {
+                img = new Image { sprite = sprite, pickingMode = PickingMode.Ignore };
+                img.style.position = Position.Absolute;
+                img.style.width = EndIconSize;
+                img.style.height = EndIconSize;
+                _element.Add(img);
+                _endIcons[def.Id] = img;
+            }
+            else
+            {
+                img.sprite = sprite;
+            }
+            img.style.display = DisplayStyle.Flex;
+            img.style.left = rect.xMax - EndIconSize - 2;
+            img.style.top = y - EndIconSize / 2f;
+            stillVisible.Add(def.Id);
+        }
+
+        foreach (var (id, img) in _endIcons)
+            if (!stillVisible.Contains(id))
+                img.style.display = DisplayStyle.None;
+    }
+
+    private void HideAllEndIcons()
+    {
+        foreach (var kv in _endIcons) kv.Value.style.display = DisplayStyle.None;
+    }
 
     /// Refreshes the vertical cursor line and tooltip panel for the current
     /// pointer position. Picks the nearest sample to the cursor's x and lists
