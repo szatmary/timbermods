@@ -136,19 +136,11 @@ public sealed class GraphsWindow : IPanelController
         contentMargin.style.flexDirection = FlexDirection.Column;
         panel.Add(contentMargin);
 
+        // Title bar holds only the close X — no title text per user pref.
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.flexDirection = FlexDirection.Row;
-        titleBar.style.justifyContent = Justify.SpaceBetween;
+        titleBar.style.justifyContent = Justify.FlexEnd;
         titleBar.style.alignItems = Align.Center;
-        titleBar.style.paddingLeft = 12;
-        titleBar.style.paddingRight = 6;
-        titleBar.style.height = 36;
-
-        var title = new Label("Graphs");
-        title.style.color = new Color(0.96f, 0.86f, 0.62f);
-        title.style.fontSize = 16;
-        title.style.unityFontStyleAndWeight = FontStyle.Bold;
-        titleBar.Add(title);
 
         var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
