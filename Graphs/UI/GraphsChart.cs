@@ -161,7 +161,7 @@ public sealed class GraphsChart
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
             float v = history.ReadValue(nearest, m);
             string vs = float.IsNaN(v) ? "—" : v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-            var row = new Label($"{def.NameLocKey}: {vs}");
+            var row = new Label($"{_legend.ResolveDisplayName(def)}: {vs}");
             row.style.color = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
             row.style.fontSize = 11;
             _tooltipBox.Add(row);

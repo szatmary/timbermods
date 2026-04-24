@@ -305,6 +305,12 @@ public sealed class GraphsLegend
     /// For other metrics, use the loc service to translate NameLocKey; if that
     /// returns the key itself (no translation loaded), strip the dotted prefix
     /// so rows read "Total" / "Adults" instead of "Graphs.Metric.Total".
+    /// Public so the chart tooltip can share the same resolution logic.
+    public string ResolveDisplayName(MetricDefinition def)
+    {
+        return ResolveDisplayName(def, out _);
+    }
+
     private string ResolveDisplayName(MetricDefinition def, out Sprite? icon)
     {
         icon = _icons.TryGet(def.Id);
