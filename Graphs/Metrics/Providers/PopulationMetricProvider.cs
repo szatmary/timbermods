@@ -48,25 +48,26 @@ public sealed class PopulationMetricProvider : IMetricProvider
         yield return FromData("pop.beds.occupied", "Graphs.Metric.OccupiedBeds", d => d.BedData.OccupiedBeds, "Quarters");
         yield return FromData("pop.beds.free",     "Graphs.Metric.FreeBeds",     d => d.BedData.FreeBeds,     "Quarters");
 
-        // Employment — its own top-level category
-        yield return InCategory(MetricCategory.Employment,
-            "emp.unemployed.beavers", "Graphs.Metric.UnemployedBeavers",
-            d => d.BeaverWorkplaceData.Unemployed, "Unemployed");
-        yield return InCategory(MetricCategory.Employment,
-            "emp.unemployed.bots", "Graphs.Metric.UnemployedBots",
-            d => d.BotWorkplaceData.Unemployed, "Unemployed");
+        // Employment — its own top-level category; sub-grouped by workforce
+        // (all beaver metrics together, then all bot metrics).
         yield return InCategory(MetricCategory.Employment,
             "emp.jobs.beavers", "Graphs.Metric.BeaverJobs",
-            d => d.BeaverWorkplaceData.OccupiedWorkslots, "Jobs filled");
+            d => d.BeaverWorkplaceData.OccupiedWorkslots, "Beavers");
         yield return InCategory(MetricCategory.Employment,
-            "emp.jobs.bots", "Graphs.Metric.BotJobs",
-            d => d.BotWorkplaceData.OccupiedWorkslots, "Jobs filled");
+            "emp.unemployed.beavers", "Graphs.Metric.UnemployedBeavers",
+            d => d.BeaverWorkplaceData.Unemployed, "Beavers");
         yield return InCategory(MetricCategory.Employment,
             "emp.vacancies.beavers", "Graphs.Metric.BeaverVacancies",
-            d => d.BeaverWorkplaceData.FreeWorkslots, "Vacancies");
+            d => d.BeaverWorkplaceData.FreeWorkslots, "Beavers");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.jobs.bots", "Graphs.Metric.BotJobs",
+            d => d.BotWorkplaceData.OccupiedWorkslots, "Bots");
+        yield return InCategory(MetricCategory.Employment,
+            "emp.unemployed.bots", "Graphs.Metric.UnemployedBots",
+            d => d.BotWorkplaceData.Unemployed, "Bots");
         yield return InCategory(MetricCategory.Employment,
             "emp.vacancies.bots", "Graphs.Metric.BotVacancies",
-            d => d.BotWorkplaceData.FreeWorkslots, "Vacancies");
+            d => d.BotWorkplaceData.FreeWorkslots, "Bots");
 
         // Health
         yield return FromData("pop.contaminated", "Graphs.Metric.Contaminated",
