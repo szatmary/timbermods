@@ -240,8 +240,8 @@ public static class MapSerializer
     private static void WriteNumberedEntityNamerService(Utf8JsonWriter w)
     {
         w.WriteStartObject("NumberedEntityNamerService");
-        w.WriteStartObject("NextNumbers");
-        w.WriteEndObject();
+        w.WriteStartArray("NextNumbers");
+        w.WriteEndArray();
         w.WriteEndObject();
     }
 
