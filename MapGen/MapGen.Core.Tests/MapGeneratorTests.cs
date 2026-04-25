@@ -30,12 +30,12 @@ public class MapGeneratorTests
     [Fact]
     public void Generate_small_map_completes()
     {
-        var config = new GenerationConfig { Width = 64, Height = 64, Seed = "1" };
+        var config = new GenerationConfig { Width = 80, Height = 80, Seed = "1" };
         var gen = new MapGenerator(EmptyCatalog());
         var result = gen.Generate(config);
         Assert.Equal(GenerationStatus.Success, result.Status);
         Assert.NotNull(result.Map);
-        Assert.Equal(64, result.Map!.Width);
+        Assert.Equal(80, result.Map!.Width);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class MapGeneratorTests
     public void SeedSweep_various_sizes()
     {
         var gen = new MapGenerator(EmptyCatalog());
-        int[] sizes = { 64, 128, 192, 256 };
+        int[] sizes = { 80, 128, 192, 256 };
         foreach (var size in sizes)
         {
             var result = gen.Generate(new GenerationConfig { Width = size, Height = size, Seed = "1" });
