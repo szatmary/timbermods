@@ -101,7 +101,7 @@ public class MapSerializerTests
     }
 
     [Fact]
-    public void WorldJson_terrain_voxel_count_matches_W_H_Zmax()
+    public void WorldJson_terrain_voxel_count_matches_W_H_FixedZ23()
     {
         var map = MakeMinimalMap(16, 16);
         var path = TempPath();
@@ -119,7 +119,7 @@ public class MapSerializerTests
                 .GetProperty("Array")
                 .GetString()!;
             var tokens = arr.Split(' ');
-            int expected = 16 * 16 * 8;  // height 4 + 4 headroom = zmax 8
+            int expected = 16 * 16 * 23;  // Timberborn fixed Z=23
             Assert.Equal(expected, tokens.Length);
             int onesInFirstFour = tokens.Take(16 * 16 * 4).Count(t => t == "1");
             Assert.Equal(16 * 16 * 4, onesInFirstFour);

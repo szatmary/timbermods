@@ -113,23 +113,12 @@ public static class MapSerializer
         w.WriteEndObject();
     }
 
-    private static int ComputeMaxZ(MapData map)
-    {
-        int max = 1;
-        for (int y = 0; y < map.Height; y++)
-        for (int x = 0; x < map.Width; x++)
-        {
-            var spans = map.Columns[map.ColumnIndex(x, y)];
-            for (int i = 0; i < spans.Count; i++)
-            {
-                int top = spans[i].TopExclusive;
-                if (top > max) max = top;
-            }
-        }
-        int withRoom = max + 4;
-        if (withRoom > 32) withRoom = 32;
-        return withRoom;
-    }
+    /// Timberborn's MapSizeSpec.MaxMapEditorTerrainHeight is fixed at 23.
+    /// The game's MapIndexService.Unpack3D expects exactly W*H*23 voxels
+    /// regardless of how tall the actual terrain is.
+    private const int FixedTerrainZ = 23;
+
+    private static int ComputeMaxZ(MapData map) => FixedTerrainZ;
 
     /// Layout assumption: z-major, then y-major, then x. The implementer
     /// MUST verify by comparing against a known reference sample. If the
@@ -182,13 +171,15 @@ public static class MapSerializer
     private static void WriteWaterMapNew(Utf8JsonWriter w, MapData map)
     {
         int n = map.Width * map.Height;
+        const int Levels = 2;
+        int len = n * Levels;
         w.WriteStartObject("WaterMapNew");
-        w.WriteNumber("Levels", 2);
+        w.WriteNumber("Levels", Levels);
         w.WriteStartObject("WaterColumns");
-        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteString("Array", ZeroArrayString(len));
         w.WriteEndObject();
         w.WriteStartObject("ColumnOutflows");
-        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteString("Array", ZeroArrayString(len));
         w.WriteEndObject();
         w.WriteEndObject();
     }
@@ -197,9 +188,7 @@ public static class MapSerializer
     {
         int n = map.Width * map.Height;
         w.WriteStartObject("WaterEvaporationMap");
-        w.WriteStartObject("Levels");
-        w.WriteString("Array", ZeroArrayString(n));
-        w.WriteEndObject();
+        w.WriteNumber("Levels", 1);
         w.WriteStartObject("EvaporationModifiers");
         w.WriteString("Array", ZeroArrayString(n));
         w.WriteEndObject();
