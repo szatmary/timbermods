@@ -82,6 +82,46 @@ public class HomeBaseTests
         Assert.True(water >= 16, $"Pond should have ≥16 water cells (the 4x4 heart), got {water}");
     }
 
+    [Fact]
+    public void Generate_places_trees_and_berries_within_ranges()
+    {
+        var (map, catalog) = MakeFakeMapAndCatalog();
+        var rng = new Rng("CONTENT");
+        HomeBase.Generate(map, catalog, 32, 32, 4, WaterVariant.Pond, ref rng);
+        int trees = 0, berries = 0;
+        foreach (var e in map.Entities)
+        {
+            if (e.Kind == EntityKind.Tree) trees++;
+            else if (e.Kind == EntityKind.Resource) berries++;
+        }
+        Assert.InRange(trees, 25, 50);
+        Assert.InRange(berries, 10, 20);
+    }
+
+    [Fact]
+    public void Generate_places_starting_location_entity()
+    {
+        var (map, catalog) = MakeFakeMapAndCatalog();
+        var rng = new Rng("START");
+        HomeBase.Generate(map, catalog, 32, 32, 4, WaterVariant.Pond, ref rng);
+        int starts = 0;
+        foreach (var e in map.Entities)
+            if (e.Kind == EntityKind.StartMarker) starts++;
+        Assert.Equal(1, starts);
+    }
+
+    [Fact]
+    public void Generate_pond_places_seep_entity()
+    {
+        var (map, catalog) = MakeFakeMapAndCatalog();
+        var rng = new Rng("SEEP");
+        HomeBase.Generate(map, catalog, 32, 32, 4, WaterVariant.Pond, ref rng);
+        int seeps = 0;
+        foreach (var e in map.Entities)
+            if (e.BlueprintKey == "WaterSeep") seeps++;
+        Assert.Equal(1, seeps);
+    }
+
     private static (MapData, Catalog) MakeFakeMapAndCatalog()
     {
         var map = new MapData(64, 64, "TEST");

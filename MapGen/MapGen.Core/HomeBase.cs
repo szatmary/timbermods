@@ -315,11 +315,124 @@ public static class HomeBase
         }
     }
 
-    private static void SetTerrainHeights(MapData m, LandUseGrid g, int x0, int y0, int hBase) { }
-    private static void PlaceTrees(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng) { }
-    private static void PlaceBerries(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng) { }
-    private static void PlaceWaterEntities(MapData m, LandUseGrid g, int x0, int y0, int hBase, WaterVariant v, ref Rng rng) { }
-    private static void PlaceStartingLocation(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase) { }
+    private const int TreeMinCount = 25;
+    private const int TreeMaxCount = 50;
+    private const int BerryMinCount = 10;
+    private const int BerryMaxCount = 20;
+    private const float TreeMinSpacing = 1.6f;
+    private const float BerryMinSpacing = 2.0f;
+
+    private static void SetTerrainHeights(MapData m, LandUseGrid g, int x0, int y0, int hBase)
+    {
+        for (int ly = 0; ly < g.Size; ly++)
+        for (int lx = 0; lx < g.Size; lx++)
+        {
+            int wx = x0 + lx;
+            int wy = y0 + ly;
+            if (wx < 0 || wy < 0 || wx >= m.Width || wy >= m.Height) continue;
+            var u = g.Get(lx, ly);
+            int h = (u == LandUseGrid.Use.Water) ? hBase - 2 : hBase;
+            var spans = m.Columns[m.ColumnIndex(wx, wy)];
+            spans.Clear();
+            spans.Add(new VoxelSpan(0, h));
+            if (u == LandUseGrid.Use.Water)
+            {
+                // Water depth 2 → surface at hBase. Banks at hBase, water flush
+                // with bank top.
+                m.WaterDepths[m.ColumnIndex(wx, wy)] = 2;
+            }
+        }
+    }
+
+    private static void PlaceTrees(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng)
+    {
+        if (c.Trees.Count == 0) return;
+        int target = rng.NextRange(TreeMinCount, TreeMaxCount + 1);
+        var samples = PoissonDisk.Sample(g.Size, g.Size, TreeMinSpacing, ref rng);
+        int placed = 0;
+        foreach (var s in samples)
+        {
+            if (placed >= target) break;
+            if (!g.InBounds(s.X, s.Y)) continue;
+            if (g.Get(s.X, s.Y) != LandUseGrid.Use.None) continue;
+            int wx = x0 + s.X, wy = y0 + s.Y;
+            if (wx < 0 || wy < 0 || wx >= m.Width || wy >= m.Height) continue;
+            var entry = c.Trees[rng.NextRange(0, c.Trees.Count)];
+            int z = m.TopHeight(wx, wy) + 1;
+            m.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                new VoxelCoord(wx, wy, z), Orientation.North, EntityKind.Tree));
+            g.Set(s.X, s.Y, LandUseGrid.Use.Tree);
+            placed++;
+        }
+    }
+
+    private static void PlaceBerries(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng)
+    {
+        if (c.Resources.Count == 0) return;
+        int target = rng.NextRange(BerryMinCount, BerryMaxCount + 1);
+        var samples = PoissonDisk.Sample(g.Size, g.Size, BerryMinSpacing, ref rng);
+        int placed = 0;
+        foreach (var s in samples)
+        {
+            if (placed >= target) break;
+            if (!g.InBounds(s.X, s.Y)) continue;
+            if (g.Get(s.X, s.Y) != LandUseGrid.Use.None) continue;
+            int wx = x0 + s.X, wy = y0 + s.Y;
+            if (wx < 0 || wy < 0 || wx >= m.Width || wy >= m.Height) continue;
+            var entry = c.Resources[rng.NextRange(0, c.Resources.Count)];
+            int z = m.TopHeight(wx, wy) + 1;
+            m.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+                new VoxelCoord(wx, wy, z), Orientation.North, EntityKind.Resource));
+            g.Set(s.X, s.Y, LandUseGrid.Use.Berry);
+            placed++;
+        }
+    }
+
+    private static void PlaceWaterEntities(MapData m, LandUseGrid g, int x0, int y0, int hBase,
+        WaterVariant v, ref Rng rng)
+    {
+        // POND/BOTH: place a single WaterSeep at the centroid of the water cells
+        // (which is the center of the heart since the pond is built around it).
+        if (v == WaterVariant.Pond || v == WaterVariant.Both)
+        {
+            // Find any pond water cell and place seep there. Heart center is fine.
+            int sumX = 0, sumY = 0, n = 0;
+            for (int ly = 0; ly < g.Size; ly++)
+            for (int lx = 0; lx < g.Size; lx++)
+            {
+                if (g.Get(lx, ly) == LandUseGrid.Use.Water) { sumX += lx; sumY += ly; n++; }
+            }
+            if (n > 0)
+            {
+                int cx = sumX / n, cy = sumY / n;
+                int wx = x0 + cx, wy = y0 + cy;
+                int z = hBase - 1;  // one voxel above channel bottom
+                m.Entities.Add(new PlacedEntity("WaterSeep",
+                    new VoxelCoord(wx, wy, z), Orientation.North,
+                    EntityKind.WaterSource, 0.5f));
+            }
+        }
+        // RIVER source/drain entities are placed by the MapGenerator in
+        // hydrology stage 5 (outside the home base region).
+    }
+
+    private static void PlaceStartingLocation(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase)
+    {
+        if (!c.BlockObjects.TryGetValue("start_marker", out var entry)) return;
+        // Find the center of the DistrictCenter cells.
+        int sumX = 0, sumY = 0, n = 0;
+        for (int ly = 0; ly < g.Size; ly++)
+        for (int lx = 0; lx < g.Size; lx++)
+        {
+            if (g.Get(lx, ly) == LandUseGrid.Use.DistrictCenter) { sumX += lx; sumY += ly; n++; }
+        }
+        if (n == 0) return;
+        int cx = sumX / n, cy = sumY / n;
+        int wx = x0 + cx, wy = y0 + cy;
+        int z = hBase;  // sits on top of the H_base flat ground
+        m.Entities.Add(new PlacedEntity(entry.BlueprintKey,
+            new VoxelCoord(wx, wy, z), Orientation.North, EntityKind.StartMarker));
+    }
 }
 
 /// Per-cell reservation tracker for a 24x24 home-base region. Indexed
