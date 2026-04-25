@@ -89,14 +89,20 @@ Stage 2 produces a region that's guaranteed-playable by construction. Stage 5 gu
 - Farm 6×6 spot also ≥3 voxels from nearest water cell, can be adjacent to the district center.
 
 **POND-specific:**
-- Pond shape: 4×4 to 6×6 contiguous water cells, randomly sized per map.
-- Pond placed at a random spot in the home base, ≥4 voxels from the home-base outer edge (so it stays inside) and ≥3 voxels from district-center + farm spots.
-- A single `WaterSeep` entity is placed inside the pond at `H_base − 1` (one voxel above the channel bottom) with `SpecifiedStrength = 0.5`. The seep tops up evaporation but cannot overflow.
+- Pond shape: random per map. Minimum is a **4×4 "heart"** (so the central 2×2 contains the seep with at least one ring of water around it). Shape can extend irregularly outward up to roughly 6×6 or 8×8, with random per-cell jitter for organic outlines.
+- Pond placed at a random spot in the home base, ≥3 voxels from the home-base outer edge and ≥3 voxels from district-center + farm spots.
+- A single `WaterSeep` entity is placed inside the pond at the heart's center, at `H_base − 1` (one voxel above the channel bottom) with `SpecifiedStrength = 0.5`. The seep tops up evaporation but cannot overflow.
 
 **RIVER-specific:**
 - River enters at one of the four 32-cell home-base edges and exits at another (opposite or perpendicular).
 - Width: random per map, in [3, 6] voxels.
-- River carving connects to the home base's in-corridor (from leg-1 of the source-to-drain trace) and out-corridor (to leg-2). The home-base river segment is wider than the corridor segments outside (which are 1 voxel wide).
+- **River path can meander** within the home base. Instead of a straight line, the trace is a random walk that:
+  - Starts at the entry edge, ends at the exit edge.
+  - At each step, prefers continuing in the same direction (60%) or turns one cell perpendicular (20% each side).
+  - Stays within the home base until it reaches the exit edge.
+  - Stays ≥3 voxels from district-center and farm spots.
+  - Width is constant for the whole segment (3–6 cells, picked once per map).
+- River carving connects to the home base's in-corridor (from leg-1 of the source-to-drain trace) and out-corridor (to leg-2). Outside the home base the river is 1 voxel wide; the home-base segment is wider.
 
 **BOTH-specific:**
 - Pond + river both present, placed independently with the same constraints.
@@ -107,17 +113,18 @@ Stage 2 produces a region that's guaranteed-playable by construction. Stage 5 gu
 
 - 4×4 contiguous flat cells at `H_base`, ≥3 voxels from any water cell (pond or river depending on variant).
 - A `StartingLocation` entity is placed at the center.
+- **A 3-cell ring around the 4×4 is reserved as LAND** (no trees, berries, ruins, blockages, or other entities), so beavers always have open ground around the district center and can never get walled in. Effective reserved footprint: 10×10 (the 4×4 plus 3 cells in each direction).
 
 ### 2.4b Farm spot
 
-- 6×6 contiguous flat cells at `H_base`, ≥3 voxels from any water cell, may be adjacent to the district-center spot.
+- 6×6 contiguous flat cells at `H_base`, ≥3 voxels from any water cell, may be adjacent to the district-center spot's 3-cell ring.
 - No entity placed; the player builds the farm. The spot is just reserved (excluded from tree / berry / overlay placement).
 
 ### 2.5 Content (trees / berries)
 
 - **Trees**: random count in [40, 80]. Poisson-disk sampled within the 32×32 region. Skip:
-  - District-center spot + 1-cell buffer around it
-  - Farm spot + 1-cell buffer around it
+  - District-center spot + its 3-cell reserved ring (10×10 footprint)
+  - Farm spot
   - Water cells (pond and/or river)
   - Slope cells
 - **Berries (BlueberryBush)**: random count in [15, 25]. Same exclusions as trees.
