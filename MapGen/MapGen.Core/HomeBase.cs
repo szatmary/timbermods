@@ -415,7 +415,10 @@ public static class HomeBase
             if (d < bestD) { bestD = d; bestX = lx; bestY = ly; }
         }
         int wx = x0 + bestX, wy = y0 + bestY;
-        int z = hBase - 1;  // one voxel above channel bottom
+        // Same Z convention as every other entity: just above the topmost
+        // solid voxel of this column. For a carved water cell that puts the
+        // seep at the bottom water voxel, with solid directly beneath it.
+        int z = m.TopHeight(wx, wy) + 1;
         m.Entities.Add(new PlacedEntity("WaterSeep",
             new VoxelCoord(wx, wy, z), Orientation.North,
             EntityKind.WaterSource, 0.5f));
