@@ -67,8 +67,7 @@ public static class MapSerializer
         w.WriteString("GameVersion", gameVersion);
         w.WriteString("Timestamp", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
         WriteSingletons(w, map);
-        w.WriteStartArray("Entities");
-        w.WriteEndArray();  // entities filled in Task 11
+        WriteEntities(w, map);
         w.WriteEndObject();
     }
 
@@ -276,4 +275,157 @@ public static class MapSerializer
         w.WriteEndObject();
         w.WriteEndObject();
     }
+
+    // -------------------------------------------------------------------------
+    // Entities
+    // -------------------------------------------------------------------------
+
+    private static void WriteEntities(Utf8JsonWriter w, MapData map)
+    {
+        w.WriteStartArray("Entities");
+        for (int i = 0; i < map.Entities.Count; i++)
+        {
+            var e = map.Entities[i];
+            w.WriteStartObject();
+            w.WriteString("Id", System.Guid.NewGuid().ToString());
+            w.WriteString("Template", e.BlueprintKey);
+            WriteComponents(w, e);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+
+    private static void WriteComponents(Utf8JsonWriter w, PlacedEntity e)
+    {
+        w.WriteStartObject("Components");
+
+        w.WriteStartObject("BlockObject");
+        w.WriteStartObject("Coordinates");
+        w.WriteNumber("X", e.Coord.X);
+        w.WriteNumber("Y", e.Coord.Y);
+        w.WriteNumber("Z", e.Coord.Z);
+        w.WriteEndObject();
+        if (e.Facing != Orientation.North)
+            w.WriteString("Orientation", FacingToOrientation(e.Facing));
+        w.WriteEndObject();
+
+        switch (e.Kind)
+        {
+            case EntityKind.Tree:
+                WriteCoordinatesOffsetter(w);
+                WriteLivingNaturalResource(w, isDead: false);
+                WriteGrowable(w, 1.0f);
+                WriteYielderCuttable(w, "Log", 2);
+                if (e.BlueprintKey == "Pine") WriteYielderGatherable(w, "PineResin", 0);
+                break;
+            case EntityKind.Resource:
+                WriteCoordinatesOffsetter(w);
+                WriteLivingNaturalResource(w, isDead: false);
+                WriteYielderGatherable(w, "Berries", 6);
+                break;
+            case EntityKind.Ruin:
+                WriteYielderRuin(w, "ScrapMetal", 45);
+                WriteRuinModels(w, "A");
+                break;
+            case EntityKind.UnstableCore:
+                WriteTimeActivatedComponent(w, isEnabled: true);
+                w.WriteStartObject("UnstableCore");
+                w.WriteNumber("ExplosionRadius", 5);
+                w.WriteEndObject();
+                break;
+            case EntityKind.WaterSource:
+            case EntityKind.BadwaterSource:
+                w.WriteStartObject("WaterSource");
+                w.WriteNumber("SpecifiedStrength", e.Param > 0 ? e.Param : 1.0f);
+                w.WriteNumber("CurrentStrength", e.Param > 0 ? e.Param : 1.0f);
+                w.WriteEndObject();
+                WriteTimeActivatedComponent(w, isEnabled: false);
+                if (e.BlueprintKey == "WaterSeep" || e.BlueprintKey == "BadwaterSeep")
+                {
+                    w.WriteStartObject("WaterDepthStrengthModifier");
+                    w.WriteNumber("CurrentModifier", 0.0f);
+                    w.WriteEndObject();
+                }
+                break;
+            // Thorn / Slope / Blockage / Relic / GeothermalVent / StartMarker:
+            // BlockObject only — no extra components.
+        }
+        w.WriteEndObject();  // Components
+    }
+
+    private static void WriteCoordinatesOffsetter(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("CoordinatesOffsetter");
+        w.WriteBoolean("Random", true);
+        w.WriteEndObject();
+    }
+
+    private static void WriteLivingNaturalResource(Utf8JsonWriter w, bool isDead)
+    {
+        w.WriteStartObject("LivingNaturalResource");
+        w.WriteBoolean("IsDead", isDead);
+        w.WriteEndObject();
+    }
+
+    private static void WriteGrowable(Utf8JsonWriter w, float progress)
+    {
+        w.WriteStartObject("Growable");
+        w.WriteNumber("GrowthProgress", progress);
+        w.WriteEndObject();
+    }
+
+    private static void WriteYielderCuttable(Utf8JsonWriter w, string good, int amount)
+    {
+        w.WriteStartObject("Yielder:Cuttable");
+        w.WriteStartObject("Yield");
+        w.WriteString("Good", good);
+        w.WriteNumber("Amount", amount);
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteYielderGatherable(Utf8JsonWriter w, string good, int amount)
+    {
+        w.WriteStartObject("Yielder:Gatherable");
+        w.WriteStartObject("Yield");
+        w.WriteString("Good", good);
+        w.WriteNumber("Amount", amount);
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteYielderRuin(Utf8JsonWriter w, string good, int amount)
+    {
+        w.WriteStartObject("Yielder:Ruin");
+        w.WriteStartObject("Yield");
+        w.WriteString("Good", good);
+        w.WriteNumber("Amount", amount);
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteRuinModels(Utf8JsonWriter w, string variantId)
+    {
+        w.WriteStartObject("RuinModels");
+        w.WriteString("VariantId", variantId);
+        w.WriteEndObject();
+    }
+
+    private static void WriteTimeActivatedComponent(Utf8JsonWriter w, bool isEnabled)
+    {
+        w.WriteStartObject("TimeActivatedComponent");
+        w.WriteBoolean("IsEnabled", isEnabled);
+        w.WriteNumber("CyclesUntilCountdownActivation", 5);
+        w.WriteNumber("DaysUntilActivation", 10.0f);
+        w.WriteNumber("DaysPassed", 0.0f);
+        w.WriteEndObject();
+    }
+
+    private static string FacingToOrientation(Orientation o) => o switch
+    {
+        Orientation.East => "Cw90",
+        Orientation.South => "Cw180",
+        Orientation.West => "Cw270",
+        _ => "Cw0",
+    };
 }

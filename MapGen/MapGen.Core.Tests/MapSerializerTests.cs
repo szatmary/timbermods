@@ -148,6 +148,76 @@ public class MapSerializerTests
         finally { File.Delete(path); }
     }
 
+    [Fact]
+    public void WorldJson_entity_per_placed()
+    {
+        var map = MakeMinimalMap();
+        map.Entities.Add(new PlacedEntity("Pine", new VoxelCoord(5, 5, 5), Orientation.North, EntityKind.Tree));
+        map.Entities.Add(new PlacedEntity("BlueberryBush", new VoxelCoord(7, 7, 5), Orientation.North, EntityKind.Resource));
+        map.Entities.Add(new PlacedEntity("StartingLocation", new VoxelCoord(10, 10, 5), Orientation.North, EntityKind.StartMarker));
+
+        var path = TempPath();
+        try
+        {
+            MapSerializer.Write(map, path, "1.0.13.0-test");
+            using var fs = File.OpenRead(path);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Read);
+            using var s = zip.GetEntry("world.json")!.Open();
+            using var doc = JsonDocument.Parse(s);
+            var entities = doc.RootElement.GetProperty("Entities");
+            Assert.Equal(3, entities.GetArrayLength());
+            Assert.Equal("Pine", entities[0].GetProperty("Template").GetString());
+            Assert.Equal("BlueberryBush", entities[1].GetProperty("Template").GetString());
+            Assert.Equal("StartingLocation", entities[2].GetProperty("Template").GetString());
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void WorldJson_tree_has_components()
+    {
+        var map = MakeMinimalMap();
+        map.Entities.Add(new PlacedEntity("Pine", new VoxelCoord(5, 5, 5), Orientation.North, EntityKind.Tree));
+        var path = TempPath();
+        try
+        {
+            MapSerializer.Write(map, path, "1.0.13.0-test");
+            using var fs = File.OpenRead(path);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Read);
+            using var s = zip.GetEntry("world.json")!.Open();
+            using var doc = JsonDocument.Parse(s);
+            var components = doc.RootElement.GetProperty("Entities")[0].GetProperty("Components");
+            Assert.True(components.TryGetProperty("BlockObject", out _));
+            Assert.True(components.TryGetProperty("LivingNaturalResource", out _));
+            Assert.True(components.TryGetProperty("Growable", out _));
+            Assert.True(components.TryGetProperty("Yielder:Cuttable", out _));
+            Assert.True(components.TryGetProperty("Yielder:Gatherable", out _));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void WorldJson_water_source_has_strength()
+    {
+        var map = MakeMinimalMap();
+        map.Entities.Add(new PlacedEntity("WaterSource", new VoxelCoord(3, 3, 5),
+            Orientation.North, EntityKind.WaterSource, 1.5f));
+        var path = TempPath();
+        try
+        {
+            MapSerializer.Write(map, path, "1.0.13.0-test");
+            using var fs = File.OpenRead(path);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Read);
+            using var s = zip.GetEntry("world.json")!.Open();
+            using var doc = JsonDocument.Parse(s);
+            var ws = doc.RootElement.GetProperty("Entities")[0]
+                .GetProperty("Components").GetProperty("WaterSource");
+            Assert.Equal(1.5f, ws.GetProperty("SpecifiedStrength").GetSingle());
+            Assert.Equal(1.5f, ws.GetProperty("CurrentStrength").GetSingle());
+        }
+        finally { File.Delete(path); }
+    }
+
     private static MapData MakeMinimalMap(int w = 32, int h = 32)
     {
         var map = new MapData(w, h, "TEST");
