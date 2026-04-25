@@ -56,6 +56,16 @@ public class HomeBaseTests
         Assert.True(farm == 36 || farm == 0, $"Farm count {farm} should be 36 or 0.");
     }
 
+    [Fact]
+    public void Generate_pond_variant_has_at_least_16_water_cells()
+    {
+        var (map, catalog) = MakeFakeMapAndCatalog();
+        var rng = new Rng("POND1");
+        var grid = HomeBase.Generate(map, catalog, 32, 32, 4, WaterVariant.Pond, ref rng);
+        int water = grid.CountWhere(LandUseGrid.Use.Water);
+        Assert.True(water >= 16, $"Pond should have ≥16 water cells (the 4x4 heart), got {water}");
+    }
+
     private static (MapData, Catalog) MakeFakeMapAndCatalog()
     {
         var map = new MapData(64, 64, "TEST");

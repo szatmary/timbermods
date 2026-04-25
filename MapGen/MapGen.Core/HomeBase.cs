@@ -89,7 +89,99 @@ public static class HomeBase
         return matching;
     }
 
-    private static void PlaceWaterFeature(LandUseGrid g, int hBase, WaterVariant v, ref Rng rng) { }
+    private static void PlaceWaterFeature(LandUseGrid g, int hBase, WaterVariant v, ref Rng rng)
+    {
+        if (v == WaterVariant.Pond || v == WaterVariant.Both)
+            PlacePond(g, ref rng);
+        // RIVER and BOTH river-portion handled in Task 4.
+    }
+
+    private const int PondHeartSize = 4;
+    private const int PondMaxExtraCells = 12;  // pond reaches up to ~28 cells total
+
+    private static void PlacePond(LandUseGrid g, ref Rng rng)
+    {
+        // Find a spot for the 4x4 heart that's ≥3 cells from district/ring/farm
+        // AND ≥3 cells from the home-base outer edge.
+        for (int attempt = 0; attempt < 200; attempt++)
+        {
+            int hx = rng.NextRange(3, RegionSize - PondHeartSize - 3 + 1);
+            int hy = rng.NextRange(3, RegionSize - PondHeartSize - 3 + 1);
+            if (!HeartAreaClear(g, hx, hy)) continue;
+
+            // Place 4x4 heart.
+            for (int y = hy; y < hy + PondHeartSize; y++)
+            for (int x = hx; x < hx + PondHeartSize; x++)
+                g.Set(x, y, LandUseGrid.Use.Water);
+
+            // Add up to PondMaxExtraCells extra adjacent cells for irregularity.
+            int extras = rng.NextRange(0, PondMaxExtraCells + 1);
+            for (int e = 0; e < extras; e++)
+            {
+                // Pick a random water cell, try to grow into a None neighbor.
+                int growX = rng.NextRange(hx - 2, hx + PondHeartSize + 2);
+                int growY = rng.NextRange(hy - 2, hy + PondHeartSize + 2);
+                if (!g.InBounds(growX, growY)) continue;
+                if (g.Get(growX, growY) != LandUseGrid.Use.None) continue;
+                if (!AnyNeighborIs(g, growX, growY, LandUseGrid.Use.Water)) continue;
+                if (DistanceToReservation(g, growX, growY) < 3) continue;
+                g.Set(growX, growY, LandUseGrid.Use.Water);
+            }
+            return;
+        }
+        // No spot found — pond skipped. v1 behavior: home base still playable
+        // because player can flatten and dig — but Pond/Both variants in this
+        // case are effectively no-water. Caller treats this as soft failure.
+    }
+
+    private static bool HeartAreaClear(LandUseGrid g, int x0, int y0)
+    {
+        // The 4x4 heart itself must be all None, AND the 3-cell buffer around it
+        // must contain no DistrictCenter/DistrictRing/Farm.
+        for (int y = y0 - 3; y < y0 + PondHeartSize + 3; y++)
+        for (int x = x0 - 3; x < x0 + PondHeartSize + 3; x++)
+        {
+            if (!g.InBounds(x, y)) continue;
+            var u = g.Get(x, y);
+            bool inHeart = (x >= x0 && x < x0 + PondHeartSize &&
+                            y >= y0 && y < y0 + PondHeartSize);
+            if (inHeart && u != LandUseGrid.Use.None) return false;
+            if (!inHeart && u != LandUseGrid.Use.None) return false;
+        }
+        return true;
+    }
+
+    private static bool AnyNeighborIs(LandUseGrid g, int x, int y, LandUseGrid.Use u)
+    {
+        for (int dy = -1; dy <= 1; dy++)
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            if (dx == 0 && dy == 0) continue;
+            int nx = x + dx, ny = y + dy;
+            if (!g.InBounds(nx, ny)) continue;
+            if (g.Get(nx, ny) == u) return true;
+        }
+        return false;
+    }
+
+    private static int DistanceToReservation(LandUseGrid g, int x, int y)
+    {
+        // Manhattan distance to nearest District / Ring / Farm cell.
+        int best = int.MaxValue;
+        for (int yy = 0; yy < g.Size; yy++)
+        for (int xx = 0; xx < g.Size; xx++)
+        {
+            var u = g.Get(xx, yy);
+            if (u == LandUseGrid.Use.DistrictCenter || u == LandUseGrid.Use.DistrictRing
+                || u == LandUseGrid.Use.Farm)
+            {
+                int d = System.Math.Abs(xx - x) + System.Math.Abs(yy - y);
+                if (d < best) best = d;
+            }
+        }
+        return best;
+    }
+
     private static void SetTerrainHeights(MapData m, LandUseGrid g, int x0, int y0, int hBase) { }
     private static void PlaceTrees(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng) { }
     private static void PlaceBerries(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng) { }
