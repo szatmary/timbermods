@@ -391,29 +391,34 @@ public static class HomeBase
     private static void PlaceWaterEntities(MapData m, LandUseGrid g, int x0, int y0, int hBase,
         WaterVariant v, ref Rng rng)
     {
-        // POND/BOTH: place a single WaterSeep at the centroid of the water cells
-        // (which is the center of the heart since the pond is built around it).
-        if (v == WaterVariant.Pond || v == WaterVariant.Both)
+        // For v1 with flat pass-2 terrain, every variant places a single
+        // self-regulating WaterSeep on a water cell. A real source-and-drain
+        // river would overflow because the surrounding plain is at hBase-1
+        // (below the river's water surface at hBase). Once pass-2 has proper
+        // elevation, we can re-introduce flow-through rivers for RIVER/BOTH.
+        int sumX = 0, sumY = 0, n = 0;
+        for (int ly = 0; ly < g.Size; ly++)
+        for (int lx = 0; lx < g.Size; lx++)
         {
-            // Find any pond water cell and place seep there. Heart center is fine.
-            int sumX = 0, sumY = 0, n = 0;
-            for (int ly = 0; ly < g.Size; ly++)
-            for (int lx = 0; lx < g.Size; lx++)
-            {
-                if (g.Get(lx, ly) == LandUseGrid.Use.Water) { sumX += lx; sumY += ly; n++; }
-            }
-            if (n > 0)
-            {
-                int cx = sumX / n, cy = sumY / n;
-                int wx = x0 + cx, wy = y0 + cy;
-                int z = hBase - 1;  // one voxel above channel bottom
-                m.Entities.Add(new PlacedEntity("WaterSeep",
-                    new VoxelCoord(wx, wy, z), Orientation.North,
-                    EntityKind.WaterSource, 0.5f));
-            }
+            if (g.Get(lx, ly) == LandUseGrid.Use.Water) { sumX += lx; sumY += ly; n++; }
         }
-        // RIVER source/drain entities are placed by the MapGenerator in
-        // hydrology stage 5 (outside the home base region).
+        if (n == 0) return;
+        int cx = sumX / n, cy = sumY / n;
+        // Find the closest actual water cell to the centroid (centroid itself
+        // may not be water for irregularly-shaped ponds / meandering rivers).
+        int bestX = cx, bestY = cy, bestD = int.MaxValue;
+        for (int ly = 0; ly < g.Size; ly++)
+        for (int lx = 0; lx < g.Size; lx++)
+        {
+            if (g.Get(lx, ly) != LandUseGrid.Use.Water) continue;
+            int d = System.Math.Abs(lx - cx) + System.Math.Abs(ly - cy);
+            if (d < bestD) { bestD = d; bestX = lx; bestY = ly; }
+        }
+        int wx = x0 + bestX, wy = y0 + bestY;
+        int z = hBase - 1;  // one voxel above channel bottom
+        m.Entities.Add(new PlacedEntity("WaterSeep",
+            new VoxelCoord(wx, wy, z), Orientation.North,
+            EntityKind.WaterSource, 0.5f));
     }
 
     private static void PlaceStartingLocation(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase)
