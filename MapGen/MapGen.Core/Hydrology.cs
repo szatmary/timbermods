@@ -249,4 +249,81 @@ public static class Hydrology
         if (y > 0) yield return (x, y - 1);
         if (y + 1 < h) yield return (x, y + 1);
     }
+
+    // ---------- Directed tracing (home-base pipeline) ----------
+
+    /// Two-leg river: source → home-in-edge, then home-out-edge → drain.
+    /// Both legs carved 1-voxel wide outside the home base; carve depth 2.
+    /// Places a `WaterSource` entity at the source.
+    /// Returns true on success, false if any leg couldn't be traced.
+    public static bool BuildExternalRiver(MapData map, GridCoord source,
+        GridCoord homeInEdge, GridCoord homeOutEdge, GridCoord drain, ref Rng rng)
+    {
+        var leg1 = TraceFromTo(map, source, homeInEdge);
+        if (leg1 == null) return false;
+        var leg2 = TraceFromTo(map, homeOutEdge, drain);
+        if (leg2 == null) return false;
+        CarveSingleVoxelRiver(map, leg1);
+        CarveSingleVoxelRiver(map, leg2);
+        // Place source entity.
+        int sz = map.TopHeight(source.X, source.Y) + 1;
+        map.Entities.Add(new PlacedEntity("WaterSource",
+            new VoxelCoord(source.X, source.Y, sz), Orientation.North,
+            EntityKind.WaterSource, 0.6f));
+        return true;
+    }
+
+    /// Trace a path from `start` toward `target` greedy-biased: at each
+    /// step pick the unvisited 4-neighbor closest to `target` that is also
+    /// no higher than the current cell + 1 (we're allowed small uphills if
+    /// it's the only way; the carve flattens them). Returns null if the
+    /// trace can't progress.
+    public static List<GridCoord>? TraceFromTo(MapData map, GridCoord start, GridCoord target)
+    {
+        var path = new List<GridCoord> { start };
+        var visited = new HashSet<GridCoord> { start };
+        int maxSteps = (map.Width + map.Height) * 4;
+        for (int step = 0; step < maxSteps; step++)
+        {
+            var cur = path[path.Count - 1];
+            if (cur.Equals(target)) return path;
+            int curH = map.TopHeight(cur.X, cur.Y);
+            // Find best unvisited neighbor: minimize Manhattan distance to target,
+            // tie-break on lower elevation.
+            GridCoord? best = null;
+            int bestDist = int.MaxValue;
+            int bestH = int.MaxValue;
+            foreach (var (nx, ny) in FourNeighbors(cur.X, cur.Y, map.Width, map.Height))
+            {
+                var nc = new GridCoord(nx, ny);
+                if (visited.Contains(nc)) continue;
+                int nh = map.TopHeight(nx, ny);
+                if (nh > curH + 1) continue;  // too uphill
+                int dist = Math.Abs(nx - target.X) + Math.Abs(ny - target.Y);
+                if (dist < bestDist || (dist == bestDist && nh < bestH))
+                {
+                    best = nc;
+                    bestDist = dist;
+                    bestH = nh;
+                }
+            }
+            if (best == null) return null;
+            path.Add(best.Value);
+            visited.Add(best.Value);
+        }
+        return null;
+    }
+
+    private static void CarveSingleVoxelRiver(MapData map, List<GridCoord> path)
+    {
+        foreach (var c in path)
+        {
+            var spans = map.Columns[map.ColumnIndex(c.X, c.Y)];
+            if (spans.Count == 0) continue;
+            var top = spans[spans.Count - 1];
+            int newHeight = Math.Max(1, top.Height - 2);
+            spans[spans.Count - 1] = new VoxelSpan(top.Bottom, newHeight);
+            map.WaterDepths[map.ColumnIndex(c.X, c.Y)] = 2;
+        }
+    }
 }
