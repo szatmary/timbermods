@@ -204,30 +204,27 @@ public static class MapSerializer
 
     private static void WriteSoilMoistureSimulator(Utf8JsonWriter w, MapData map)
     {
-        int n = map.Width * map.Height;
+        const int Size = 2;
+        int len = map.Width * map.Height * Size;
         w.WriteStartObject("SoilMoistureSimulator");
-        w.WriteStartObject("Size");
-        w.WriteNumber("X", map.Width);
-        w.WriteNumber("Y", map.Height);
-        w.WriteEndObject();
+        w.WriteNumber("Size", Size);
         w.WriteStartObject("MoistureLevels");
-        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteString("Array", ZeroArrayString(len));
         w.WriteEndObject();
         w.WriteEndObject();
     }
 
     private static void WriteSoilContaminationSimulator(Utf8JsonWriter w, MapData map)
     {
-        int n = map.Width * map.Height;
+        const int Size = 2;
+        int len = map.Width * map.Height * Size;
         w.WriteStartObject("SoilContaminationSimulator");
-        w.WriteStartObject("Size");
-        w.WriteNumber("X", map.Width);
-        w.WriteNumber("Y", map.Height);
+        w.WriteNumber("Size", Size);
+        w.WriteStartObject("ContaminationCandidates");
+        w.WriteString("Array", ZeroArrayString(len));
         w.WriteEndObject();
-        w.WriteStartArray("ContaminationCandidates");
-        w.WriteEndArray();
         w.WriteStartObject("ContaminationLevels");
-        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteString("Array", ZeroArrayString(len));
         w.WriteEndObject();
         w.WriteEndObject();
     }
