@@ -61,7 +61,7 @@ Stage 2 produces a region that's guaranteed-playable by construction. Stage 5 gu
 
 ## Section 2 — Home-base region generation
 
-**Region size:** 32×32 voxels centered on (cx, cy). Larger than the prior draft so the home base can fit a 4×4 district-center spot, a 6×6 farm spot, the 3–6-wide river, and content (trees, berries) without crowding.
+**Region size:** 24×24 voxels centered on (cx, cy). Fits the 4×4 district-center spot (with its 3-cell ring → 10×10 reserved footprint), a 6×6 farm spot, a 4–6 cell pond or 3–6 wide river segment, with ≥3-voxel buffers between them and 25–50 trees + 10–20 berries scattered in the gaps.
 
 ### 2.1 Terrain shape
 
@@ -122,12 +122,12 @@ Stage 2 produces a region that's guaranteed-playable by construction. Stage 5 gu
 
 ### 2.5 Content (trees / berries)
 
-- **Trees**: random count in [40, 80]. Poisson-disk sampled within the 32×32 region. Skip:
+- **Trees**: random count in [25, 50]. Poisson-disk sampled within the 24×24 region. Skip:
   - District-center spot + its 3-cell reserved ring (10×10 footprint)
   - Farm spot
   - Water cells (pond and/or river)
   - Slope cells
-- **Berries (BlueberryBush)**: random count in [15, 25]. Same exclusions as trees.
+- **Berries (BlueberryBush)**: random count in [10, 20]. Same exclusions as trees.
 
 ### 2.6 Safe buffer (no hazards)
 
@@ -135,7 +135,7 @@ Stage 2 produces a region that's guaranteed-playable by construction. Stage 5 gu
 
 ### 2.7 Locked metacells
 
-- The 32×32 voxels span 4×4 metacells (8×8 each). Mark these 16 metacells as "locked" so WFC in stage 6 doesn't try to place biomes there. After WFC, hand-tag the 16 metacells as `Biome.Meadow` (or a special `Biome.HomeBase` if we want differentiated heightmap noise — but Meadow works fine).
+- The 24×24 voxels span 3×3 metacells (8×8 each). These 9 metacells are tagged `Biome.Meadow` (no WFC in v1; see §6).
 
 ## Section 3 — Remote water source (only for RIVER and BOTH variants)
 
@@ -176,28 +176,20 @@ For the POND and BOTH variants only.
 - A single `WaterSeep` entity placed inside the pond at `H_base − 1` (one voxel above channel bottom).
 - `SpecifiedStrength = 0.5`. Self-regulating; tops up evaporation only.
 
-## Section 6 — WFC biomes for non-locked metacells
+## Section 6 — Minimal "legal" fill for the rest of the map (v1 scope)
 
-- Run the existing `BiomeGrid.Solve` but with the 3×3 home-base metacells PRE-COLLAPSED to `Meadow`. The WFC propagates outward respecting that constraint.
-- Crater-edge rewrite still applies.
+**This is intentionally barebones.** A proper second pass with biome WFC, heightmap noise, and overlays comes in a future plan. For v1 we just produce a map the game can load with a playable home base.
 
-## Section 7 — Heightmap for non-locked cells
+- All non-locked metacells: tag `Biome.Meadow`.
+- All non-locked, non-river-corridor voxel cells: heightmap = flat at `H_base − 1` (one voxel below the home base, so the home base sits visually on a plateau but beavers can't step up to it from outside without a slope — fine for v1, the player can build infrastructure to expand outward).
+- No overlays outside the home base in v1: no extra trees, no berries, no ruins, no thorns, no hazards. Empty plain.
 
-- Run existing `Heightmap.Build` BUT skip cells whose metacell is locked OR is on the river corridor (single voxel-wide cells along the leg-1 + leg-2 paths).
-- For locked cells: their heights are already set by stage 2.
-- For river-corridor cells: their heights are already set by leg-1 / leg-2 carving.
+This is ugly but correct — the map loads, the home base is playable, the river flows. Variety comes later.
 
-## Section 8 — Overlays outside the home base
+## Section 7 — Final access validation
 
-- Existing `Overlays.PlaceTrees`, `PlaceResources`, etc. — modified to skip cells inside the home-base 24×24 region OR its 3-voxel buffer.
-- Trees / berries placed inside the home base were handled by stage 2.5; overlays handle the rest of the map.
-- Ruins, blockages, hazards: skip if cell is inside `home_base + buffer`.
-
-## Section 9 — Final access validation
-
-- BFS from the district-center voxel. Confirm trees ≥ 30, berries ≥ 15, water reachable.
-- These should ALWAYS pass given stage 2's content guarantees. If not, the home-base content guarantees were violated — restart pipeline at seed+1.
-- The expensive top-up + slope-place repair passes from Plan 1 are no longer needed (they exist to compensate for the broken old pipeline).
+- BFS from the district-center voxel. Confirm trees ≥ 25, berries ≥ 10, water reachable.
+- These should ALWAYS pass given stage 2's content guarantees. If not, the home-base generation has a bug — surface as a hard error rather than retry.
 
 ## Out of scope (deferred)
 
