@@ -238,4 +238,21 @@ public static class Heightmap
     }
 
     private static float Lerp(float a, float b, float t) => a + (b - a) * t;
+
+    // ---------- v1 minimal pass-2 ----------
+
+    /// Sets every column NOT matching `skipPredicate` to a single solid span
+    /// of given height. Used for v1's minimal pass-2 (everywhere outside the
+    /// home base becomes a featureless plain).
+    public static void FlatFill(MapData map, int height, Func<int, int, bool> skipPredicate)
+    {
+        for (int y = 0; y < map.Height; y++)
+        for (int x = 0; x < map.Width; x++)
+        {
+            if (skipPredicate(x, y)) continue;
+            var spans = map.Columns[map.ColumnIndex(x, y)];
+            spans.Clear();
+            spans.Add(new VoxelSpan(0, height));
+        }
+    }
 }
