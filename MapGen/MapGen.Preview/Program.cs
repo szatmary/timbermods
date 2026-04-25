@@ -13,6 +13,8 @@ public static class Program
         int count = 1;
         string outDir = "previews";
         string? catalogDir = null;
+        bool writeTimber = false;
+        string gameVersion = "1.0.13.0-1e60728-xsm";
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -24,9 +26,11 @@ public static class Program
                 case "--count": case "-n": count = int.Parse(args[++i]); break;
                 case "--out": case "-o": outDir = args[++i]; break;
                 case "--catalog": case "-c": catalogDir = args[++i]; break;
+                case "--write-timber": writeTimber = true; break;
+                case "--game-version": gameVersion = args[++i]; break;
                 default:
                     Console.Error.WriteLine($"Unknown argument: {args[i]}");
-                    Console.Error.WriteLine("Usage: preview [--width N] [--height N] [--seed STR] [--count N] [--out DIR] [--catalog DIR]");
+                    Console.Error.WriteLine("Usage: preview [--width N] [--height N] [--seed STR] [--count N] [--out DIR] [--catalog DIR] [--write-timber] [--game-version STR]");
                     return 1;
             }
         }
@@ -50,6 +54,12 @@ public static class Program
                 var outPath = Path.Combine(outDir, $"seed-{safeSeed}-{width}x{height}.png");
                 Renderer.RenderToPng(result.Map, outPath);
                 Console.WriteLine($"OK  seed={result.ActualSeedUsed} -> {outPath}");
+                if (writeTimber)
+                {
+                    var timberPath = Path.Combine(outDir, $"seed-{safeSeed}-{width}x{height}.timber");
+                    MapSerializer.Write(result.Map, timberPath, gameVersion);
+                    Console.WriteLine($"   .timber -> {timberPath}");
+                }
                 successes++;
             }
             else
