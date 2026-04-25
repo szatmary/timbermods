@@ -248,8 +248,11 @@ public static class MapSerializer
     private static void WriteWindService(Utf8JsonWriter w)
     {
         w.WriteStartObject("WindService");
-        w.WriteNumber("WindStrength", 1.0f);
-        w.WriteString("WindDirection", "East");
+        w.WriteNumber("WindStrength", 0.0f);
+        w.WriteStartObject("WindDirection");
+        w.WriteNumber("X", 0.0f);
+        w.WriteNumber("Y", 0.0f);
+        w.WriteEndObject();
         w.WriteNumber("NextWindChangeTime", 0.0f);
         w.WriteEndObject();
     }
