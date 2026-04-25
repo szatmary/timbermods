@@ -35,8 +35,60 @@ public static class HomeBase
         return grid;
     }
 
-    // Stub implementations — Tasks 2-6 replace these.
-    private static void ReserveDistrictAndFarm(LandUseGrid g, ref Rng rng) { }
+    private static void ReserveDistrictAndFarm(LandUseGrid g, ref Rng rng)
+    {
+        // District 4x4 + 3-cell ring on each side → 10x10 footprint.
+        // Pick a top-left for the FOOTPRINT such that it stays inside
+        // the 24x24 region.
+        int footprint = DistrictSize + 2 * DistrictRingPadding;  // 10
+        int maxStart = RegionSize - footprint;
+        int dx = rng.NextRange(0, maxStart + 1);  // top-left of FOOTPRINT
+        int dy = rng.NextRange(0, maxStart + 1);
+        // District 4x4 sits at the center of the footprint.
+        int dCx = dx + DistrictRingPadding;
+        int dCy = dy + DistrictRingPadding;
+
+        // Mark 3-ring around district as DistrictRing.
+        for (int y = dy; y < dy + footprint; y++)
+        for (int x = dx; x < dx + footprint; x++)
+            g.Set(x, y, LandUseGrid.Use.DistrictRing);
+
+        // Overwrite the inner 4x4 as DistrictCenter.
+        for (int y = dCy; y < dCy + DistrictSize; y++)
+        for (int x = dCx; x < dCx + DistrictSize; x++)
+            g.Set(x, y, LandUseGrid.Use.DistrictCenter);
+
+        // Farm 6x6 placed at a random spot that doesn't overlap district
+        // footprint (10x10) AND has 3-voxel buffer to water (no water yet
+        // — placing water happens next, which respects existing reservations).
+        for (int attempt = 0; attempt < 100; attempt++)
+        {
+            int fx = rng.NextRange(0, RegionSize - FarmSize + 1);
+            int fy = rng.NextRange(0, RegionSize - FarmSize + 1);
+            if (RegionAnyOverlap(g, fx, fy, FarmSize, LandUseGrid.Use.None) ==
+                FarmSize * FarmSize)
+            {
+                for (int y = fy; y < fy + FarmSize; y++)
+                for (int x = fx; x < fx + FarmSize; x++)
+                    g.Set(x, y, LandUseGrid.Use.Farm);
+                return;
+            }
+        }
+        // Fallback: the farm sometimes can't fit cleanly. For v1 just
+        // accept that. The home base remains playable without a farm
+        // reserved (player can flatten ground later).
+    }
+
+    private static int RegionAnyOverlap(LandUseGrid g, int x0, int y0, int size,
+        LandUseGrid.Use mustEqual)
+    {
+        int matching = 0;
+        for (int y = y0; y < y0 + size; y++)
+        for (int x = x0; x < x0 + size; x++)
+            if (g.Get(x, y) == mustEqual) matching++;
+        return matching;
+    }
+
     private static void PlaceWaterFeature(LandUseGrid g, int hBase, WaterVariant v, ref Rng rng) { }
     private static void SetTerrainHeights(MapData m, LandUseGrid g, int x0, int y0, int hBase) { }
     private static void PlaceTrees(MapData m, LandUseGrid g, Catalog c, int x0, int y0, int hBase, ref Rng rng) { }
