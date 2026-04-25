@@ -52,10 +52,12 @@ public sealed class GraphsChart
     // pitch uniformly so everything still fits rather than spilling off.
     private const float MarkerHeight = EndIconSize + EndLabelHeight;
     private const float GutterWidth = EndIconSize + 6f; // icon + padding
-    // Gutter icons + value labels are rebuilt every render. Caching them
-    // across visibility toggles caused stale styles/state that prevented
-    // re-enabled metrics from showing their icon again.
-    private readonly System.Collections.Generic.List<VisualElement> _endChildren = new();
+    // Pool of gutter icons + value labels. Grows as needed; unused entries
+    // get display:None. Reusing elements (rather than re-creating them per
+    // render) avoids GC churn — but we re-set every relevant style on each
+    // use so no stale state can prevent a re-enabled metric from rendering.
+    private readonly System.Collections.Generic.List<Image> _endIconPool = new();
+    private readonly System.Collections.Generic.List<Label> _endLabelPool = new();
 
     public GraphsChart(
         MetricSampler sampler,
@@ -151,16 +153,12 @@ public sealed class GraphsChart
     {
         if (_element is null) return;
 
-        // Drop any previously-rendered icons/labels — we rebuild from scratch.
-        foreach (var el in _endChildren) el.RemoveFromHierarchy();
-        _endChildren.Clear();
-
         var rect = _element.contentRect;
-        if (rect.width <= 0 || rect.height <= 0) return;
+        if (rect.width <= 0 || rect.height <= 0) { HideAllEndPool(); return; }
         var draw = DrawArea(rect);
 
         var history = _sampler.HistoryFor(_range.LookbackDays());
-        if (history.Count == 0) return;
+        if (history.Count == 0) { HideAllEndPool(); return; }
 
         float latestT = history.ReadTimestamp(history.Count - 1);
         // Always use the full selected lookback window — don't clamp to the
@@ -169,7 +167,7 @@ public sealed class GraphsChart
         float startT = latestT - _range.LookbackDays();
         int startIdx = history.FindFirstAtOrAfter(startT);
         int endIdx = history.Count;
-        if (startIdx >= endIdx) return;
+        if (startIdx >= endIdx) { HideAllEndPool(); return; }
 
         var ranges = ComputeScaleRanges(history, startIdx, endIdx);
         var metrics = _registry.Metrics;
@@ -227,53 +225,83 @@ public sealed class GraphsChart
             if (ys[i] > upper) ys[i] = upper;
         }
 
+        // Grow the pools to cover all candidates. New entries get one-time
+        // style setup that doesn't change between renders.
+        while (_endIconPool.Count < candidates.Count)
+        {
+            var img = new Image { pickingMode = PickingMode.Ignore };
+            img.style.position = Position.Absolute;
+            img.style.width = EndIconSize;
+            img.style.height = EndIconSize;
+            _element.Add(img);
+            _endIconPool.Add(img);
+        }
+        while (_endLabelPool.Count < candidates.Count)
+        {
+            var lbl = new Label("") { pickingMode = PickingMode.Ignore };
+            lbl.style.position = Position.Absolute;
+            lbl.style.fontSize = 10;
+            lbl.style.color = new Color(0.92f, 0.86f, 0.72f);
+            lbl.style.unityTextAlign = TextAnchor.MiddleCenter;
+            lbl.style.width = GutterWidth;
+            lbl.style.unityFontStyleAndWeight = FontStyle.Bold;
+            _element.Add(lbl);
+            _endLabelPool.Add(lbl);
+        }
+
         for (int iIdx = 0; iIdx < candidates.Count; iIdx++)
         {
             var c = candidates[iIdx];
             float centerY = ys[iIdx];
 
-            var img = new Image { pickingMode = PickingMode.Ignore };
-            img.style.position = Position.Absolute;
-            img.style.width = EndIconSize;
-            img.style.height = EndIconSize;
+            var img = _endIconPool[iIdx];
             img.style.left = gutterX;
             img.style.top = centerY - EndIconSize / 2f;
+            // Always reset BOTH sprite and backgroundColor so a previous
+            // render's state can't bleed through when this slot is reused
+            // for a different metric (or after a visibility toggle).
             if (c.Sprite == null)
             {
-                // Fallback when no sprite resolves: plain filled square
-                // in the line color.
+                img.sprite = null;
                 img.style.backgroundColor = new StyleColor(GraphColors.ColorFor(c.Def.Id, c.Def.Category));
                 img.tintColor = Color.white;
             }
             else
             {
                 img.sprite = c.Sprite;
+                img.style.backgroundColor = new StyleColor(Color.clear);
                 // Wellbeing-category icons get a category tint (warm gold)
                 // across wellbeing / hunger / thirst so they read as a group.
                 img.tintColor = c.Def.Category == MetricCategory.Wellbeing
                     ? WellbeingTint
                     : Color.white;
             }
-            _element.Add(img);
-            _endChildren.Add(img);
+            img.style.display = DisplayStyle.Flex;
 
-            // Companion value label sits just below the icon in the gutter.
             int idx = _registry.IndexOf(c.Def.Id);
             float v = idx >= 0 ? history.ReadValue(last, idx) : float.NaN;
-            var vlabel = new Label(
-                float.IsNaN(v) ? "—" : v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))
-                { pickingMode = PickingMode.Ignore };
-            vlabel.style.position = Position.Absolute;
-            vlabel.style.fontSize = 10;
-            vlabel.style.color = new Color(0.92f, 0.86f, 0.72f);
-            vlabel.style.unityTextAlign = TextAnchor.MiddleCenter;
-            vlabel.style.width = GutterWidth;
-            vlabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            var vlabel = _endLabelPool[iIdx];
+            vlabel.text = float.IsNaN(v)
+                ? "—"
+                : v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
             vlabel.style.left = gutterX - (GutterWidth - EndIconSize) / 2f;
             vlabel.style.top = centerY + EndIconSize / 2f;
-            _element.Add(vlabel);
-            _endChildren.Add(vlabel);
+            vlabel.style.display = DisplayStyle.Flex;
         }
+
+        // Hide any pool entries beyond this render's candidate count.
+        for (int i = candidates.Count; i < _endIconPool.Count; i++)
+            _endIconPool[i].style.display = DisplayStyle.None;
+        for (int i = candidates.Count; i < _endLabelPool.Count; i++)
+            _endLabelPool[i].style.display = DisplayStyle.None;
+    }
+
+    private void HideAllEndPool()
+    {
+        for (int i = 0; i < _endIconPool.Count; i++)
+            _endIconPool[i].style.display = DisplayStyle.None;
+        for (int i = 0; i < _endLabelPool.Count; i++)
+            _endLabelPool[i].style.display = DisplayStyle.None;
     }
 
     /// Samples the average hue of each weather notification banner so the
@@ -397,12 +425,13 @@ public sealed class GraphsChart
         _cursorLine.style.display = DisplayStyle.Flex;
         _cursorLine.style.left = sampleX;
 
-        // Header reads "Day D : HH" — D is the in-game day, HH is the hour
-        // within that day (0..23). 24 samples per day so the fractional part
-        // multiplied by 24 gives the hour directly.
-        int day = (int)sampleT;
-        int hour = (int)((sampleT - day) * 24f);
-        if (hour >= 24) hour = 23;
+        // Header reads "Day D:HH" — D is the in-game day, HH is the hour
+        // within that day (0..23). Compute total hours since game start
+        // with rounding so fp drift doesn't push hour 0 of next day back
+        // to hour 23 of the current day.
+        int totalHours = Mathf.RoundToInt(sampleT * 24f);
+        int day = totalHours / 24;
+        int hour = totalHours % 24;
         _tooltipHeader.text = $"Day {day}:{hour:00}";
 
         // Rebuild the metric rows. RemoveFromHierarchy is safe even if the

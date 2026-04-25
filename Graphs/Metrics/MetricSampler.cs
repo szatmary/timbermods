@@ -56,8 +56,10 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
     private float[]? _scratch;
     private readonly HashSet<string> _loggedFailures = new();
 
-    /// Recent (full-res) tier — used for "current value" reads in the legend.
-    public MetricHistory History
+    /// Recent (full-res) tier — used for "current value" reads (e.g. the
+    /// legend's right-side numeric column). All chart rendering should go
+    /// through HistoryFor instead so the tier matches the lookback range.
+    public MetricHistory Recent
         => _history?.Recent ?? throw new InvalidOperationException("MetricSampler not loaded yet.");
 
     /// Returns the tier whose resolution best matches the requested lookback.
@@ -273,6 +275,11 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
             _history!.Append(row, (byte)weather[s], timestamps[s]);
         }
 
+        // Force-flush any partial Mid/Old buckets so the tail of the V1
+        // samples is represented in those tiers rather than stranded in
+        // the in-memory accumulator.
+        _history!.FlushPending();
+
         Debug.Log(
             $"[Graphs] migrated {sampleCount} V1 samples into tiered history; " +
             $"timestamps {timestamps[0]:0.00}..{timestamps[sampleCount - 1]:0.00}");
@@ -297,7 +304,11 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
             timestamps = loader.Get(timestampsKey);
             weather = loader.Get(weatherKey);
         }
-        catch { return 0; }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[Graphs] tier restore failed for '{countKey}': {ex.Message}");
+            return 0;
+        }
         if (sampleCount <= 0) return 0;
 
         int savedMetricCount = savedToCurrent.Length;

@@ -5,11 +5,12 @@ namespace Graphs.Metrics;
 /// Three-tier history: Recent (24/day, last 100d), Mid (4/day, last 1000d),
 /// Old (1/day, last 10000d). Each Append goes to Recent at full resolution
 /// and is accumulated into Mid/Old running averages; once N raw samples have
-/// accumulated for a tier, the average is flushed to that tier's ring buffer.
+/// accumulated for a tier, the average is flushed to that tier's ring buffer
+/// with a timestamp at the bucket's midpoint.
 ///
-/// Charts pick a tier via HistoryFor(lookbackDays). If the chosen tier is
-/// empty (early game, before accumulators have flushed), it falls back to
-/// the next-finer tier so something is always visible.
+/// Charts pick a tier via HistoryFor(lookbackDays). The chosen tier must
+/// actually reach further back than the next-finer tier; otherwise we use
+/// the finer tier (which has at least as much coverage at higher resolution).
 public sealed class TieredMetricHistory
 {
     public const int RecentCapacity = 2_400;   // 100 days @ 24/day
@@ -26,19 +27,23 @@ public sealed class TieredMetricHistory
 
     // Running sums + counters for tier averaging. Weather is decimated by
     // taking the most-recent raw weather value at flush time (not averaged).
+    // Timestamps: track first + last in each bucket so we can stamp the
+    // flushed sample at the bucket midpoint instead of its trailing edge.
     private readonly double[] _midSum;
     private readonly double[] _oldSum;
     private int _midCount;
     private int _oldCount;
     private byte _midLastWeather;
     private byte _oldLastWeather;
+    private float _midFirstTimestamp;
+    private float _oldFirstTimestamp;
     private float _midLastTimestamp;
     private float _oldLastTimestamp;
 
     public int MetricCount => _metricCount;
-    public MetricHistory Recent => _recent;
-    public MetricHistory Mid => _mid;
-    public MetricHistory Old => _old;
+    internal MetricHistory Recent => _recent;
+    internal MetricHistory Mid => _mid;
+    internal MetricHistory Old => _old;
 
     public TieredMetricHistory(int metricCount)
     {
@@ -58,8 +63,11 @@ public sealed class TieredMetricHistory
 
         _recent.Append(values, weather, timestamp);
 
-        // Accumulate into mid + old running sums. NaN values pass through
-        // as NaN: any NaN in the window makes the averaged sample NaN.
+        // Accumulate into mid + old running sums. NaN values poison the
+        // bucket's average — a single NaN raw sample makes the bucket's
+        // averaged sample NaN, which the chart draws as a gap. Acceptable.
+        if (_midCount == 0) _midFirstTimestamp = timestamp;
+        if (_oldCount == 0) _oldFirstTimestamp = timestamp;
         for (int i = 0; i < _metricCount; i++) _midSum[i] += values[i];
         for (int i = 0; i < _metricCount; i++) _oldSum[i] += values[i];
         _midCount++;
@@ -73,12 +81,22 @@ public sealed class TieredMetricHistory
         if (_oldCount >= OldDecimation) FlushOld();
     }
 
+    /// Force-flush any pending Mid/Old accumulators. Used at the end of
+    /// migration paths so the tail of the migrated samples isn't stranded
+    /// in the accumulator.
+    public void FlushPending()
+    {
+        if (_midCount > 0) FlushMid();
+        if (_oldCount > 0) FlushOld();
+    }
+
     private void FlushMid()
     {
         var avg = new float[_metricCount];
-        float inv = 1f / _midCount;
+        double inv = 1.0 / _midCount;
         for (int i = 0; i < _metricCount; i++) avg[i] = (float)(_midSum[i] * inv);
-        _mid.Append(avg, _midLastWeather, _midLastTimestamp);
+        float midpoint = (_midFirstTimestamp + _midLastTimestamp) * 0.5f;
+        _mid.Append(avg, _midLastWeather, midpoint);
         Array.Clear(_midSum, 0, _metricCount);
         _midCount = 0;
     }
@@ -86,20 +104,30 @@ public sealed class TieredMetricHistory
     private void FlushOld()
     {
         var avg = new float[_metricCount];
-        float inv = 1f / _oldCount;
+        double inv = 1.0 / _oldCount;
         for (int i = 0; i < _metricCount; i++) avg[i] = (float)(_oldSum[i] * inv);
-        _old.Append(avg, _oldLastWeather, _oldLastTimestamp);
+        float midpoint = (_oldFirstTimestamp + _oldLastTimestamp) * 0.5f;
+        _old.Append(avg, _oldLastWeather, midpoint);
         Array.Clear(_oldSum, 0, _metricCount);
         _oldCount = 0;
     }
 
     /// Pick the tier whose resolution best fits the requested lookback.
-    /// Falls back to a finer tier if the chosen one hasn't accumulated any
-    /// samples yet.
+    /// A coarser tier wins only when it actually reaches further back than
+    /// the next-finer tier — otherwise the finer tier has at least as much
+    /// coverage at higher resolution and should be used.
     public MetricHistory HistoryFor(float lookbackDays)
     {
         if (lookbackDays <= 100f) return _recent;
-        if (lookbackDays <= 1000f) return _mid.Count > 0 ? _mid : _recent;
-        return _old.Count > 0 ? _old : (_mid.Count > 0 ? _mid : _recent);
+
+        if (lookbackDays <= 1000f)
+            return OldestTimestamp(_mid) < OldestTimestamp(_recent) ? _mid : _recent;
+
+        // lookbackDays > 1000
+        var midOrRecent = OldestTimestamp(_mid) < OldestTimestamp(_recent) ? _mid : _recent;
+        return OldestTimestamp(_old) < OldestTimestamp(midOrRecent) ? _old : midOrRecent;
     }
+
+    private static float OldestTimestamp(MetricHistory h)
+        => h.Count == 0 ? float.PositiveInfinity : h.ReadTimestamp(0);
 }

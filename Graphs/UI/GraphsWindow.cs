@@ -103,7 +103,7 @@ public sealed class GraphsWindow : IPanelController
 
     private void RefreshValues()
     {
-        var history = _sampler.History;
+        var history = _sampler.Recent;
         if (history.Count == 0) return;
         int last = history.Count - 1;
         _legend.UpdateCurrentValues(id =>
