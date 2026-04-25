@@ -91,8 +91,15 @@ public static class MapSerializer
         w.WriteEndObject();
 
         WriteTerrainMap(w, map);
-
-        // Other singletons added in Task 10.
+        WriteWaterMapNew(w, map);
+        WriteWaterEvaporationMap(w, map);
+        WriteWaterSimulationMigrator(w);
+        WriteSoilMoistureSimulator(w, map);
+        WriteSoilContaminationSimulator(w, map);
+        WriteHazardousWeatherHistory(w);
+        WriteNumberedEntityNamerService(w);
+        WriteWindService(w);
+        WriteMapThumbnailCameraMover(w);
 
         w.WriteEndObject();
     }
@@ -160,5 +167,113 @@ public static class MapSerializer
         for (int i = 0; i < bytes.Length; i++)
             bytes[i] = byte.Parse(hex.Substring(i * 2, 2), System.Globalization.NumberStyles.HexNumber);
         return bytes;
+    }
+
+    private static string ZeroArrayString(int count)
+    {
+        var sb = new StringBuilder(count * 2);
+        for (int i = 0; i < count; i++)
+        {
+            if (i > 0) sb.Append(' ');
+            sb.Append('0');
+        }
+        return sb.ToString();
+    }
+
+    private static void WriteWaterMapNew(Utf8JsonWriter w, MapData map)
+    {
+        int n = map.Width * map.Height;
+        w.WriteStartObject("WaterMapNew");
+        w.WriteNumber("Levels", 2);
+        w.WriteStartObject("WaterColumns");
+        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteEndObject();
+        w.WriteStartObject("ColumnOutflows");
+        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteWaterEvaporationMap(Utf8JsonWriter w, MapData map)
+    {
+        int n = map.Width * map.Height;
+        w.WriteStartObject("WaterEvaporationMap");
+        w.WriteStartObject("Levels");
+        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteEndObject();
+        w.WriteStartObject("EvaporationModifiers");
+        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteWaterSimulationMigrator(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("WaterSimulationMigrator");
+        w.WriteBoolean("IsMigrated", true);
+        w.WriteEndObject();
+    }
+
+    private static void WriteSoilMoistureSimulator(Utf8JsonWriter w, MapData map)
+    {
+        int n = map.Width * map.Height;
+        w.WriteStartObject("SoilMoistureSimulator");
+        w.WriteStartObject("Size");
+        w.WriteNumber("X", map.Width);
+        w.WriteNumber("Y", map.Height);
+        w.WriteEndObject();
+        w.WriteStartObject("MoistureLevels");
+        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteSoilContaminationSimulator(Utf8JsonWriter w, MapData map)
+    {
+        int n = map.Width * map.Height;
+        w.WriteStartObject("SoilContaminationSimulator");
+        w.WriteStartObject("Size");
+        w.WriteNumber("X", map.Width);
+        w.WriteNumber("Y", map.Height);
+        w.WriteEndObject();
+        w.WriteStartArray("ContaminationCandidates");
+        w.WriteEndArray();
+        w.WriteStartObject("ContaminationLevels");
+        w.WriteString("Array", ZeroArrayString(n));
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteHazardousWeatherHistory(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("HazardousWeatherHistory");
+        w.WriteStartArray("HistoryData");
+        w.WriteEndArray();
+        w.WriteEndObject();
+    }
+
+    private static void WriteNumberedEntityNamerService(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("NumberedEntityNamerService");
+        w.WriteStartObject("NextNumbers");
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteWindService(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("WindService");
+        w.WriteNumber("WindStrength", 1.0f);
+        w.WriteString("WindDirection", "East");
+        w.WriteNumber("NextWindChangeTime", 0.0f);
+        w.WriteEndObject();
+    }
+
+    private static void WriteMapThumbnailCameraMover(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("MapThumbnailCameraMover");
+        w.WriteStartObject("CurrentConfiguration");
+        w.WriteEndObject();
+        w.WriteEndObject();
     }
 }
