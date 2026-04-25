@@ -1,6 +1,6 @@
 {
     "Name": "Power Zipline",
-    "Version": "1.0.0",
+    "Version": "1.2.0",
     "Id": "PowerZipline",
     "MinimumGameVersion": "1.0.0.0",
     "Description": "Power zipline buildings that transfer mechanical power through cables."

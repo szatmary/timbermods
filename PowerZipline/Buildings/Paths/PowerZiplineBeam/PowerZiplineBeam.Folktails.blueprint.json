@@ -116,7 +116,7 @@
       "Y": 0.85,
       "Z": 2.5
     },
-    "MaxConnections": 2,
+    "MaxConnections": 3,
     "MaxDistance": 30,
     "UnobstructedCoordinates": [
       {

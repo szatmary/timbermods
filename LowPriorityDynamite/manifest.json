@@ -1,0 +1,7 @@
+{
+    "Name": "Low Priority Dynamite",
+    "Version": "1.0.0",
+    "Id": "DynamitePriority",
+    "MinimumGameVersion": "1.0.0.0",
+    "Description": "Dynamite placed on the map automatically defaults to Low builder priority, so builders won't rush to arm it."
+}

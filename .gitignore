@@ -6,3 +6,7 @@ dist/
 .vs/
 .idea/
 *.DotSettings.user
+
+# Local reference clones — not part of this repo
+TimberAPI/
+TimberAPI_Docs/
