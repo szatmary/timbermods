@@ -43,7 +43,7 @@ public static class Hydrology
                 var head = rivers[i][0];
                 bool badwater = (i > 0) && rng.NextFloat() < BadwaterChanceSecondary;
                 map.Entities.Add(new PlacedEntity(
-                    blueprintKey: badwater ? "WaterSource.Badwater" : "WaterSource.Water",
+                    blueprintKey: badwater ? "BadwaterSource" : "WaterSource",
                     coord: new VoxelCoord(head.X, head.Y, map.TopHeight(head.X, head.Y) + 1),
                     facing: Orientation.North,
                     kind: badwater ? EntityKind.BadwaterSource : EntityKind.WaterSource,
@@ -206,7 +206,7 @@ public static class Hydrology
                     int vx = (mx + 1) * 8;
                     int vy = my * 8 + rng.NextRange(0, 8);
                     map.Entities.Add(new PlacedEntity(
-                        "WaterSource.Seep",
+                        "WaterSeep",
                         new VoxelCoord(vx, vy, map.TopHeight(vx, vy) + 1),
                         Orientation.North, EntityKind.WaterSource, 0.3f));
                 }
@@ -224,7 +224,7 @@ public static class Hydrology
             int vx = mx * 8 + rng.NextRange(1, 7);
             int vy = my * 8 + rng.NextRange(1, 7);
             map.Entities.Add(new PlacedEntity(
-                "WaterSource.Badwater",
+                "BadwaterSource",
                 new VoxelCoord(vx, vy, map.TopHeight(vx, vy) + 1),
                 Orientation.North, EntityKind.BadwaterSource, 0.5f));
         }
@@ -232,10 +232,11 @@ public static class Hydrology
 
     private static float PickFlowRate(ref Rng rng)
     {
+        // Conservative — strong rivers flood the carved 3-deep channel.
         float r = rng.NextFloat();
-        if (r < 0.33f) return 0.5f;
-        if (r < 0.67f) return 1.2f;
-        return 2.5f;
+        if (r < 0.33f) return 0.3f;
+        if (r < 0.67f) return 0.6f;
+        return 1.0f;
     }
 
     private static Biome BiomeAt(MapData map, int x, int y) =>

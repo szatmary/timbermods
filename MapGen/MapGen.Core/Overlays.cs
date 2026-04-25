@@ -143,6 +143,13 @@ public static class Overlays
         if (vx < 0 || vy < 0 || vx >= map.Width || vy >= map.Height) return false;
         if (map.WaterDepths[map.ColumnIndex(vx, vy)] > 0) return false;
         if (map.Columns[map.ColumnIndex(vx, vy)].Count == 0) return false;
+        // Prevent stacking entities on the same column — Timberborn rejects
+        // duplicates as "invalid location."
+        for (int i = 0; i < map.Entities.Count; i++)
+        {
+            var c = map.Entities[i].Coord;
+            if (c.X == vx && c.Y == vy) return false;
+        }
         return true;
     }
 
