@@ -182,6 +182,7 @@ public sealed class GraphsWindow : IPanelController
         // the legend flex-grows so it reaches the bottom of the window.
         var legendSlot = new VisualElement { name = "graphs-legend-slot" };
         legendSlot.style.width = 230;
+        legendSlot.style.marginLeft = 8;
         legendSlot.style.marginRight = 10;
         legendSlot.style.marginTop = 10;
         legendSlot.style.marginBottom = 0;

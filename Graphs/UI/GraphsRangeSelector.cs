@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-public enum GraphRange { OneDay, TenDays, HundredDays, ThousandDays }
+public enum GraphRange { TenDays, HundredDays, ThousandDays, TenThousandDays }
 
 public sealed class GraphsRangeSelector
 {
@@ -33,10 +33,10 @@ public sealed class GraphsRangeSelector
             return btn;
         }
 
-        row.Add(Make("1 day",     GraphRange.OneDay));
-        row.Add(Make("10 days",   GraphRange.TenDays));
-        row.Add(Make("100 days",  GraphRange.HundredDays));
-        row.Add(Make("1000 days", GraphRange.ThousandDays));
+        row.Add(Make("10 days",    GraphRange.TenDays));
+        row.Add(Make("100 days",   GraphRange.HundredDays));
+        row.Add(Make("1000 days",  GraphRange.ThousandDays));
+        row.Add(Make("10000 days", GraphRange.TenThousandDays));
 
         return row;
 
@@ -80,10 +80,10 @@ public sealed class GraphsRangeSelector
 
     public float LookbackDays() => CurrentRange switch
     {
-        GraphRange.OneDay       => 1f,
-        GraphRange.TenDays      => 10f,
-        GraphRange.HundredDays  => 100f,
-        GraphRange.ThousandDays => 1000f,
-        _                       => 10f,
+        GraphRange.TenDays         => 10f,
+        GraphRange.HundredDays     => 100f,
+        GraphRange.ThousandDays    => 1000f,
+        GraphRange.TenThousandDays => 10000f,
+        _                          => 10f,
     };
 }
