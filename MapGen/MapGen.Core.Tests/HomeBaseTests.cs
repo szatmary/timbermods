@@ -57,6 +57,22 @@ public class HomeBaseTests
     }
 
     [Fact]
+    public void Generate_river_variant_has_water_cells()
+    {
+        // Run a few seeds; not every seed will succeed in placing a river,
+        // but at least some should.
+        int successful = 0;
+        for (uint s = 0; s < 5; s++)
+        {
+            var (map, catalog) = MakeFakeMapAndCatalog();
+            var rng = new Rng($"RIVER{s}");
+            var grid = HomeBase.Generate(map, catalog, 32, 32, 4, WaterVariant.River, ref rng);
+            if (grid.CountWhere(LandUseGrid.Use.Water) > 5) successful++;
+        }
+        Assert.True(successful >= 3, $"At least 3/5 seeds should produce a river, got {successful}");
+    }
+
+    [Fact]
     public void Generate_pond_variant_has_at_least_16_water_cells()
     {
         var (map, catalog) = MakeFakeMapAndCatalog();

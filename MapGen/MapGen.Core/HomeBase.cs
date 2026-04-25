@@ -93,7 +93,8 @@ public static class HomeBase
     {
         if (v == WaterVariant.Pond || v == WaterVariant.Both)
             PlacePond(g, ref rng);
-        // RIVER and BOTH river-portion handled in Task 4.
+        if (v == WaterVariant.River || v == WaterVariant.Both)
+            PlaceRiverMeander(g, ref rng);
     }
 
     private const int PondHeartSize = 4;
@@ -180,6 +181,138 @@ public static class HomeBase
             }
         }
         return best;
+    }
+
+    private static void PlaceRiverMeander(LandUseGrid g, ref Rng rng)
+    {
+        int width = rng.NextRange(3, 7);  // [3, 6]
+        // Pick entry edge (0=top, 1=right, 2=bottom, 3=left) and exit edge
+        // (must differ).
+        int entryEdge = rng.NextRange(0, 4);
+        int exitEdge;
+        do { exitEdge = rng.NextRange(0, 4); } while (exitEdge == entryEdge);
+
+        // Try up to 30 attempts to find a meander that respects buffers.
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            var path = TraceMeanderPath(entryEdge, exitEdge, ref rng);
+            if (PathIsValid(g, path, width))
+            {
+                StampRiver(g, path, width);
+                return;
+            }
+        }
+        // Soft failure — no river placed. Caller may surface this.
+    }
+
+    private static List<(int X, int Y)> TraceMeanderPath(int entryEdge, int exitEdge, ref Rng rng)
+    {
+        var path = new List<(int X, int Y)>();
+        // Entry point = midpoint-ish of entry edge.
+        var (sx, sy) = EdgeMidpoint(entryEdge, ref rng);
+        path.Add((sx, sy));
+        var (dx, dy) = EdgeOutwardDirection(exitEdge);  // direction to head TOWARD exit
+        // Reverse to be heading INTO map from entry.
+        var (hx, hy) = EdgeOutwardDirection(entryEdge);
+        int curDx = -hx, curDy = -hy;
+
+        for (int step = 0; step < RegionSize * 2; step++)
+        {
+            var last = path[path.Count - 1];
+            // 60% straight, 20% each side.
+            float r = rng.NextFloat();
+            if (r < 0.2f) (curDx, curDy) = TurnLeft(curDx, curDy);
+            else if (r < 0.4f) (curDx, curDy) = TurnRight(curDx, curDy);
+            int nx = last.X + curDx;
+            int ny = last.Y + curDy;
+            // Reject if going out of bounds (except at exit edge).
+            if (nx < 0 || ny < 0 || nx >= RegionSize || ny >= RegionSize)
+            {
+                // If we've reached the exit edge, accept the exit.
+                if (OnEdge(nx, ny, exitEdge)) { path.Add((nx, ny)); return path; }
+                // Otherwise turn back inward.
+                (curDx, curDy) = (-curDx, -curDy);
+                continue;
+            }
+            path.Add((nx, ny));
+            if (OnEdge(nx, ny, exitEdge)) return path;
+        }
+        return path;  // step limit hit; returned path may not reach exit
+    }
+
+    private static (int X, int Y) EdgeMidpoint(int edge, ref Rng rng)
+    {
+        int mid = RegionSize / 2 + rng.NextRange(-3, 4);  // jittered midpoint
+        mid = System.Math.Clamp(mid, 4, RegionSize - 5);
+        return edge switch
+        {
+            0 => (mid, 0),
+            1 => (RegionSize - 1, mid),
+            2 => (mid, RegionSize - 1),
+            3 => (0, mid),
+            _ => (mid, mid),
+        };
+    }
+
+    private static (int X, int Y) EdgeOutwardDirection(int edge) => edge switch
+    {
+        0 => (0, -1),
+        1 => (1, 0),
+        2 => (0, 1),
+        3 => (-1, 0),
+        _ => (0, 0),
+    };
+
+    private static (int X, int Y) TurnLeft(int dx, int dy) => (-dy, dx);
+    private static (int X, int Y) TurnRight(int dx, int dy) => (dy, -dx);
+
+    private static bool OnEdge(int x, int y, int edge) => edge switch
+    {
+        0 => y < 0,
+        1 => x >= RegionSize,
+        2 => y >= RegionSize,
+        3 => x < 0,
+        _ => false,
+    };
+
+    private static bool PathIsValid(LandUseGrid g, List<(int X, int Y)> path, int width)
+    {
+        int half = width / 2;
+        foreach (var (x, y) in path)
+        {
+            for (int dy = -half; dy <= half; dy++)
+            for (int dx = -half; dx <= half; dx++)
+            {
+                int cx = x + dx, cy = y + dy;
+                if (!g.InBounds(cx, cy)) continue;
+                var u = g.Get(cx, cy);
+                if (u == LandUseGrid.Use.DistrictCenter ||
+                    u == LandUseGrid.Use.DistrictRing ||
+                    u == LandUseGrid.Use.Farm) return false;
+            }
+        }
+        return true;
+    }
+
+    private static void StampRiver(LandUseGrid g, List<(int X, int Y)> path, int width)
+    {
+        int half = width / 2;
+        foreach (var (x, y) in path)
+        {
+            for (int dy = -half; dy <= half; dy++)
+            for (int dx = -half; dx <= half; dx++)
+            {
+                int cx = x + dx, cy = y + dy;
+                if (!g.InBounds(cx, cy)) continue;
+                if (g.Get(cx, cy) == LandUseGrid.Use.None ||
+                    g.Get(cx, cy) == LandUseGrid.Use.DistrictRing)
+                {
+                    // Allow river to overwrite DistrictRing? No — PathIsValid
+                    // rejected those. So this branch only triggers for None.
+                    g.Set(cx, cy, LandUseGrid.Use.Water);
+                }
+            }
+        }
     }
 
     private static void SetTerrainHeights(MapData m, LandUseGrid g, int x0, int y0, int hBase) { }
