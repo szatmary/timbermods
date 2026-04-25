@@ -1,8 +1,0 @@
-{
-  "slope": { "key": "slope", "blueprintKey": "Slope", "weight": 1.0 },
-  "unstable_core": { "key": "unstable_core", "blueprintKey": "UnstableCore", "weight": 1.0 },
-  "geothermal_vent": { "key": "geothermal_vent", "blueprintKey": "GeothermalField", "weight": 1.0 },
-  "relic": { "key": "relic", "blueprintKey": "SmallRelic", "weight": 1.0 },
-  "blockage": { "key": "blockage", "blueprintKey": "Blockage", "weight": 1.0 },
-  "start_marker": { "key": "start_marker", "blueprintKey": "StartingLocation", "weight": 1.0 }
-}

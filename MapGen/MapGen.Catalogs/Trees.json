@@ -1,7 +1,0 @@
-[
-  { "key": "maple", "blueprintKey": "Maple", "weight": 1.0 },
-  { "key": "pine", "blueprintKey": "Pine", "weight": 1.0 },
-  { "key": "birch", "blueprintKey": "Birch", "weight": 1.0 },
-  { "key": "oak", "blueprintKey": "Oak", "weight": 1.0 },
-  { "key": "dead_stump", "blueprintKey": "Pine", "weight": 0.3 }
-]
