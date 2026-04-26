@@ -42,17 +42,21 @@ named partition.
 ## Persistent state added by the mod
 
 ```
-class ClockworkRegistry  (saved singleton, key "GraphsClockworkRegistry"
-                         — to be confirmed; lives in the same mod or its
-                         own; see "Mod boundary" below)
+class ClockworkRegistry  (saved singleton, key TBD)
 {
     Dictionary<Guid, string> NamesByAnchor;   // automatorId → user name
-    Dictionary<Guid, string> LeafNames;       // entityId of leaf bldg → name
 }
 ```
 
 That's the entirety of new persistent state. Vanilla owns the wires, the
 emitters' names, the partition graph, the building inventory.
+
+**Leaf names** are not stored by the mod. Vanilla provides
+`Timberborn.EntityNaming.NamedEntity` — the same component automation
+emitters already use. We attach it to receiver buildings (floodgate,
+sluice, valve, dynamite, pump) via blueprint patches; from then on those
+buildings are nameable through the same vanilla path the player already
+knows, and vanilla persists the names.
 
 ## Anchor lifecycle
 
@@ -81,8 +85,13 @@ When the anchor automator is demolished:
 
 ### The drawer
 
-- Left-side popout, similar pattern to Timberborn's building-toolbar
-  flyouts. Stays open while game runs. Toggleable.
+- Left-side panel injected via `Timberborn.UILayoutSystem.UILayout.AddPanel`
+  (or `AddOrderablePanel`). **Not** modal — does not block gameplay. The
+  Graphs mod uses `PanelStack.PushDialog`, which is the wrong shape for
+  this; Clockwork uses the layout-system panel API instead.
+- Visual chrome reuses the same `NineSliceVisualElement` + `.sliced-border`
+  USS classes the EntityPanel uses, so the drawer feels native.
+- Stays open while the game runs. Toggleable.
 - Hotkey: configurable (default to be picked when implementing — start with
   `C`). Plus a sidebar/topbar button.
 - Width target: ~300px. Tree-style content; no node-graph view.
@@ -157,25 +166,24 @@ let it; if a connection fails, surface the game's error).
 
 ### Leaf rename
 
-Floodgates / sluices / etc. don't have vanilla naming. The mod adds:
+The mod attaches vanilla `Timberborn.EntityNaming.NamedEntity` to receiver
+blueprints (floodgate, sluice, valve, dynamite, pump, …) via blueprint
+patches. Once attached, those buildings are nameable through the same
+vanilla path automation emitters already use, and the names are saved by
+vanilla. No mod-side leaf-name dictionary.
 
-- An entity component (`ClockworkLeafName`) attached on first rename.
-- A small text field in the entity panel via a fragment, similar to the
-  district rename UI.
-- The drawer's leaf rows display this name when present, falling back to
-  `<type> #<auto-index>` otherwise.
-
-Stored in `LeafNames` keyed by `EntityComponent.EntityId`.
+The drawer's leaf rows display the vanilla `EntityName` when set,
+falling back to `<type>, <district> #<auto-index>` otherwise.
 
 ### Building identification
 
-Emitter rows: vanilla `EntityName` (player-set), or empty string fallback
-to type + auto-index.
+Emitter rows: vanilla `EntityName` (player-set), or fallback to
+`<type> #<auto-index>` when the player hasn't named it.
 
-Leaf rows: `LeafNames` mod-side name if set, otherwise `<type>, <district>
-#<auto-index>`. The `district` portion needs a per-leaf district-of-record;
-use the building's home district at the time it was placed (already
-tracked by Timberborn).
+Leaf rows: vanilla `EntityName` (set via the same vanilla naming UI we've
+attached via blueprint patch), or fallback to `<type>, <district>
+#<auto-index>`. The `district` portion uses the building's home district
+(already tracked by Timberborn).
 
 ## Mod boundary
 
