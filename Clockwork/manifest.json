@@ -1,0 +1,7 @@
+{
+    "Name": "Clockwork",
+    "Version": "0.1.0",
+    "Id": "Clockwork",
+    "MinimumGameVersion": "1.0.0.0",
+    "Description": "A left-side drawer for viewing and editing automation wiring across your colony. Names automation flows ('Clockworks') so you can find them by name. No new game features; just a UI over vanilla automation."
+}
