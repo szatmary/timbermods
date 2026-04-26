@@ -2,6 +2,7 @@ using Bindito.Core;
 using Clockwork.Data;
 using Clockwork.Services;
 using Clockwork.UI;
+using Timberborn.BatchControl;
 
 namespace Clockwork;
 
@@ -12,7 +13,8 @@ public class ClockworkConfigurator : Configurator
     {
         Bind<ClockworkRegistry>().AsSingleton();
         Bind<PartitionSnapshotService>().AsSingleton();
-        Bind<ClockworkPanel>().AsSingleton();
-        Bind<ClockworkHotkey>().AsSingleton();
+        // Register the tab into the Manage Settlement (BatchControl) drawer.
+        // Vanilla collects all BatchControlTab instances and shows them as tabs.
+        MultiBind<BatchControlTab>().To<ClockworkBatchControlTab>().AsSingleton();
     }
 }
