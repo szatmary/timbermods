@@ -1,4 +1,5 @@
 using Bindito.Core;
+using Clockwork.Data;
 
 namespace Clockwork;
 
@@ -7,6 +8,6 @@ public class ClockworkConfigurator : Configurator
 {
     protected override void Configure()
     {
-        // bindings added in later tasks
+        Bind<ClockworkRegistry>().AsSingleton();
     }
 }
