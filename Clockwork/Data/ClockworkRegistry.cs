@@ -10,6 +10,8 @@ namespace Clockwork.Data;
 /// Persistent name-per-anchor map. The anchor is one automator within a
 /// vanilla AutomatorPartition; the partition's display name in the drawer
 /// is the name of any anchor it currently contains.
+///
+/// Keys are `Automator.AutomatorId` strings (vanilla owns the id format).
 public sealed class ClockworkRegistry : ILoadableSingleton, ISaveableSingleton
 {
     private static readonly SingletonKey SavedKey = new("ClockworkRegistry");
@@ -17,7 +19,7 @@ public sealed class ClockworkRegistry : ILoadableSingleton, ISaveableSingleton
     private static readonly ListKey<string> SavedNames = new("Names");
 
     private readonly ISingletonLoader _singletonLoader;
-    private readonly Dictionary<Guid, string> _namesByAnchor = new();
+    private readonly Dictionary<string, string> _namesByAnchor = new(StringComparer.Ordinal);
 
     public event Action? Changed;
 
@@ -35,10 +37,7 @@ public sealed class ClockworkRegistry : ILoadableSingleton, ISaveableSingleton
             var names = loader.Get(SavedNames);
             int n = Math.Min(ids.Count, names.Count);
             for (int i = 0; i < n; i++)
-            {
-                if (Guid.TryParse(ids[i], out var g))
-                    _namesByAnchor[g] = names[i];
-            }
+                _namesByAnchor[ids[i]] = names[i];
         }
         catch (Exception ex)
         {
@@ -49,24 +48,24 @@ public sealed class ClockworkRegistry : ILoadableSingleton, ISaveableSingleton
     public void Save(ISingletonSaver singletonSaver)
     {
         var saver = singletonSaver.GetSingleton(SavedKey);
-        saver.Set(SavedAnchorIds, _namesByAnchor.Keys.Select(g => g.ToString()).ToArray());
+        saver.Set(SavedAnchorIds, _namesByAnchor.Keys.ToArray());
         saver.Set(SavedNames, _namesByAnchor.Values.ToArray());
     }
 
-    public bool TryGet(Guid anchor, out string name)
-        => _namesByAnchor.TryGetValue(anchor, out name!);
+    public bool TryGet(string anchorId, out string name)
+        => _namesByAnchor.TryGetValue(anchorId, out name!);
 
-    public void Set(Guid anchor, string name)
+    public void Set(string anchorId, string name)
     {
-        if (string.IsNullOrWhiteSpace(name)) { Remove(anchor); return; }
-        _namesByAnchor[anchor] = name;
+        if (string.IsNullOrWhiteSpace(name)) { Remove(anchorId); return; }
+        _namesByAnchor[anchorId] = name;
         Changed?.Invoke();
     }
 
-    public void Remove(Guid anchor)
+    public void Remove(string anchorId)
     {
-        if (_namesByAnchor.Remove(anchor)) Changed?.Invoke();
+        if (_namesByAnchor.Remove(anchorId)) Changed?.Invoke();
     }
 
-    public IReadOnlyDictionary<Guid, string> All => _namesByAnchor;
+    public IReadOnlyDictionary<string, string> All => _namesByAnchor;
 }
