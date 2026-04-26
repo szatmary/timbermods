@@ -1,6 +1,7 @@
 using Bindito.Core;
 using Clockwork.Data;
 using Clockwork.Services;
+using Clockwork.UI;
 
 namespace Clockwork;
 
@@ -11,5 +12,7 @@ public class ClockworkConfigurator : Configurator
     {
         Bind<ClockworkRegistry>().AsSingleton();
         Bind<PartitionSnapshotService>().AsSingleton();
+        Bind<ClockworkPanel>().AsSingleton();
+        Bind<ClockworkHotkey>().AsSingleton();
     }
 }
