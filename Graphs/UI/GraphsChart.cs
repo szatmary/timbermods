@@ -189,7 +189,11 @@ public sealed class GraphsChart
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
             if (!ranges.TryGetValue(def.ScaleGroup, out var range)) continue;
 
-            float v = history.ReadValue(last, m);
+            // On coarser tiers, the very-latest sample is a bucket average
+            // and can be NaN if any hour in the bucket failed. Walk back to
+            // the most-recent non-NaN sample within the window so the marker
+            // still anchors to real data instead of being dropped.
+            float v = LatestNonNaN(history, m, startIdx, last);
             if (float.IsNaN(v)) continue;
 
             float norm = range.Span > 0 ? (v - range.Min) / range.Span : 0f;
@@ -279,7 +283,9 @@ public sealed class GraphsChart
             img.style.display = DisplayStyle.Flex;
 
             int idx = _registry.IndexOf(c.Def.Id);
-            float v = idx >= 0 ? history.ReadValue(last, idx) : float.NaN;
+            float v = idx >= 0
+                ? LatestNonNaN(history, idx, startIdx, last)
+                : float.NaN;
             var vlabel = _endLabelPool[iIdx];
             vlabel.text = float.IsNaN(v)
                 ? "—"
@@ -294,6 +300,20 @@ public sealed class GraphsChart
             _endIconPool[i].style.display = DisplayStyle.None;
         for (int i = candidates.Count; i < _endLabelPool.Count; i++)
             _endLabelPool[i].style.display = DisplayStyle.None;
+    }
+
+    /// Walks backward from `endIdx` through `startIdx` and returns the
+    /// first non-NaN value for the given metric, or NaN if the entire
+    /// window is NaN for it. Used so a single NaN-poisoned bucket on
+    /// Mid/Old doesn't drop the metric from the gutter.
+    private static float LatestNonNaN(MetricHistory history, int metricIdx, int startIdx, int endIdx)
+    {
+        for (int i = endIdx; i >= startIdx; i--)
+        {
+            float v = history.ReadValue(i, metricIdx);
+            if (!float.IsNaN(v)) return v;
+        }
+        return float.NaN;
     }
 
     private void HideAllEndPool()
