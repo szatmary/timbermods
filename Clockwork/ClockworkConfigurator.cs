@@ -13,6 +13,7 @@ public class ClockworkConfigurator : Configurator
     {
         Bind<ClockworkRegistry>().AsSingleton();
         Bind<PartitionSnapshotService>().AsSingleton();
+        Bind<BuildingPing>().AsSingleton();
         // Register the tab into the Manage Settlement (BatchControl) drawer.
         // Vanilla collects all BatchControlTab instances and shows them as tabs.
         MultiBind<BatchControlTab>().To<ClockworkBatchControlTab>().AsSingleton();

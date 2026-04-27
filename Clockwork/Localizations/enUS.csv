@@ -1,0 +1,6 @@
+ID,Text,Comment
+Clockwork.TabName,Clockworks,Tab label in Manage Settlement
+Clockwork.UnnamedFlow,Unnamed flow,Default header for a flow with no user-set name
+Clockwork.RenamePlaceholder,Name this Clockwork...,Placeholder text in the rename field
+Clockwork.NoSource,(no source),Marker shown when a flow has no source automator
+Clockwork.NoSink,(no sink),Marker shown when a flow has no sink automator

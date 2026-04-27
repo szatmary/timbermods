@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,13 +13,18 @@ using UnityEngine.UIElements;
 
 namespace Clockwork.UI;
 
-/// Adds a "Clockworks" tab to the in-game Manage Settlement (Batch
-/// Control) drawer. Each automation flow (vanilla AutomatorPartition) is
-/// one row group; rows under it are the wires inside that flow.
+/// Adds a "Clockworks" tab to the in-game Manage Settlement (Batch Control)
+/// drawer. Each automation flow (vanilla AutomatorPartition) becomes one row
+/// group. Inside the group: a rename row + one row per source/filter/sink.
+///
+/// Sources    = transmitters with no input connections (sensors, timers).
+/// Filters    = automators with both inputs and outputs (gates, levers).
+/// Sinks      = receivers with no output connections (floodgates, pumps).
 public sealed class ClockworkBatchControlTab : BatchControlTab
 {
     private readonly PartitionSnapshotService _snapshots;
     private readonly ClockworkRegistry _registry;
+    private readonly BuildingPing _ping;
     private readonly BatchControlRowGroupFactory _rowGroupFactory;
 
     public ClockworkBatchControlTab(
@@ -27,21 +33,19 @@ public sealed class ClockworkBatchControlTab : BatchControlTab
         BatchControlRowGroupFactory rowGroupFactory,
         EventBus eventBus,
         PartitionSnapshotService snapshots,
-        ClockworkRegistry registry)
+        ClockworkRegistry registry,
+        BuildingPing ping)
         : base(visualElementLoader, batchControlDistrict, eventBus)
     {
         _snapshots = snapshots;
         _registry = registry;
+        _ping = ping;
         _rowGroupFactory = rowGroupFactory;
     }
 
     public override string TabNameLocKey => "Clockwork.TabName";
-    public override string TabImage => "UI/Images/Game/ico-bot";  // placeholder icon
+    public override string TabImage => "UI/Images/Game/ico-bot";  // placeholder — TBD
     public override string BindingKey => "Clockwork.Tab";
-
-    /// We don't care about the per-district entity list — automation flows
-    /// are settlement-wide. Setting this to true means the tab gets shown
-    /// regardless of which district is selected.
     public override bool IgnoreDistrictSelection => true;
 
     protected override IEnumerable<BatchControlRowGroup> GetRowGroups(
@@ -59,29 +63,127 @@ public sealed class ClockworkBatchControlTab : BatchControlTab
             else
                 unnamed.Add(p);
         }
-        named.Sort((x, y) => System.StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
+        named.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.name, y.name));
         unnamed.Sort((x, y) => y.Automators.Count.CompareTo(x.Automators.Count));
 
         foreach (var (p, name) in named) yield return BuildGroup(p, name);
-        foreach (var p in unnamed) yield return BuildGroup(p, DescribeFlow(p));
+        foreach (var p in unnamed) yield return BuildGroup(p, currentName: null);
     }
 
-    private BatchControlRowGroup BuildGroup(PartitionSnapshot partition, string header)
+    private BatchControlRowGroup BuildGroup(PartitionSnapshot partition, string? currentName)
     {
-        var group = _rowGroupFactory.CreateSortedWithTextHeader(header);
-        // One row per wire — easiest readable layout for v1.
-        var byId = partition.Automators.ToDictionary(a => a.AutomatorId);
-        foreach (var wire in partition.Wires)
-        {
-            if (!byId.TryGetValue(wire.FromAutomatorId, out var from)) continue;
-            if (!byId.TryGetValue(wire.ToAutomatorId, out var to)) continue;
-            group.AddRow(BuildWireRow(from, to, wire));
-        }
+        var (sources, filters, sinks) = ClassifyAutomators(partition);
+        var summary = BuildSummary(sources, filters, sinks);
+        var headerText = currentName ?? summary;
+        var group = _rowGroupFactory.CreateSortedWithTextHeader(headerText);
+
+        // Top row: a rename text field. Choosing an anchor: prefer the
+        // existing one when named, else the first source (lowest-id).
+        string anchorId = partition.AnchorId ?? PickAnchor(partition);
+        group.AddRow(BuildRenameRow(anchorId, currentName));
+
+        // Per-role rows. Each shows the building's name, a live state dot,
+        // and a ping button to focus the camera.
+        foreach (var src in sources) group.AddRow(BuildAutomatorRow(src, RoleLabel.Source));
+        foreach (var flt in filters) group.AddRow(BuildAutomatorRow(flt, RoleLabel.Filter));
+        foreach (var snk in sinks)   group.AddRow(BuildAutomatorRow(snk, RoleLabel.Sink));
         return group;
     }
 
-    private static BatchControlRow BuildWireRow(
-        AutomatorView from, AutomatorView to, WireView wire)
+    private enum RoleLabel { Source, Filter, Sink }
+
+    private static string PickAnchor(PartitionSnapshot partition)
+    {
+        // Prefer a source. Else any automator. Lowest AutomatorId for stability.
+        var ordered = partition.Automators
+            .OrderBy(a => a.AutomatorId, StringComparer.Ordinal)
+            .ToList();
+        var firstSource = ordered.FirstOrDefault(a => (a.Role & AutomatorRole.Emitter) != 0
+                                                       && !partition.Wires.Any(w => w.ToAutomatorId == a.AutomatorId));
+        return firstSource?.AutomatorId ?? ordered.FirstOrDefault()?.AutomatorId ?? "";
+    }
+
+    private static (List<AutomatorView> sources, List<AutomatorView> filters, List<AutomatorView> sinks)
+        ClassifyAutomators(PartitionSnapshot partition)
+    {
+        var hasIncoming = new HashSet<string>();
+        var hasOutgoing = new HashSet<string>();
+        foreach (var w in partition.Wires)
+        {
+            hasIncoming.Add(w.ToAutomatorId);
+            hasOutgoing.Add(w.FromAutomatorId);
+        }
+        var sources = new List<AutomatorView>();
+        var filters = new List<AutomatorView>();
+        var sinks = new List<AutomatorView>();
+        foreach (var a in partition.Automators)
+        {
+            bool inc = hasIncoming.Contains(a.AutomatorId);
+            bool outg = hasOutgoing.Contains(a.AutomatorId);
+            if (outg && !inc) sources.Add(a);
+            else if (outg && inc) filters.Add(a);
+            else if (inc && !outg) sinks.Add(a);
+        }
+        sources.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.DisplayName, y.DisplayName));
+        filters.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.DisplayName, y.DisplayName));
+        sinks.Sort((x, y) => StringComparer.OrdinalIgnoreCase.Compare(x.DisplayName, y.DisplayName));
+        return (sources, filters, sinks);
+    }
+
+    private static string BuildSummary(
+        List<AutomatorView> sources, List<AutomatorView> filters, List<AutomatorView> sinks)
+    {
+        var sb = new StringBuilder();
+        sb.Append(JoinNames(sources, "(no source)"));
+        if (filters.Count > 0) { sb.Append(" → "); sb.Append(JoinNames(filters, "")); }
+        sb.Append(" → ");
+        sb.Append(JoinNames(sinks, "(no sink)"));
+        return sb.ToString();
+    }
+
+    private static string JoinNames(List<AutomatorView> list, string emptyPlaceholder)
+        => list.Count == 0 ? emptyPlaceholder : string.Join(", ", list.Select(a => a.DisplayName));
+
+    /// Top row of each group — text field for naming the flow.
+    private BatchControlRow BuildRenameRow(string anchorId, string? currentName)
+    {
+        var content = new VisualElement();
+        content.style.flexDirection = FlexDirection.Row;
+        content.style.alignItems = Align.Center;
+        content.style.height = 24;
+        content.style.paddingLeft = 8;
+        content.style.paddingRight = 8;
+
+        var prefix = new Label("Name:");
+        prefix.style.color = new StyleColor(new Color(0.85f, 0.78f, 0.62f));
+        prefix.style.fontSize = 11;
+        prefix.style.marginRight = 6;
+        content.Add(prefix);
+
+        var field = new TextField { value = currentName ?? "" };
+        field.style.flexGrow = 1;
+        field.style.fontSize = 12;
+        field.RegisterCallback<KeyDownEvent>(e =>
+        {
+            if (e.keyCode == KeyCode.Return) Commit();
+            else if (e.keyCode == KeyCode.Escape) field.value = currentName ?? "";
+        });
+        field.RegisterCallback<FocusOutEvent>(_ => Commit());
+        content.Add(field);
+
+        void Commit()
+        {
+            if (string.IsNullOrWhiteSpace(field.value))
+                _registry.Remove(anchorId);
+            else
+                _registry.Set(anchorId, field.value.Trim());
+        }
+
+        return new BatchControlRow(content, Array.Empty<IBatchControlRowItem>());
+    }
+
+    /// Per-automator row — role tag, name, signal dot, ping button.
+    private BatchControlRow BuildAutomatorRow(AutomatorView automator, RoleLabel role)
     {
         var content = new VisualElement();
         content.style.flexDirection = FlexDirection.Row;
@@ -90,7 +192,18 @@ public sealed class ClockworkBatchControlTab : BatchControlTab
         content.style.paddingLeft = 8;
         content.style.paddingRight = 8;
 
-        // Live signal dot.
+        var roleTag = new Label(role switch
+        {
+            RoleLabel.Source => "src",
+            RoleLabel.Filter => "flt",
+            _                => "out",
+        });
+        roleTag.style.color = new StyleColor(new Color(0.55f, 0.50f, 0.42f));
+        roleTag.style.fontSize = 10;
+        roleTag.style.minWidth = 28;
+        roleTag.style.unityTextAlign = TextAnchor.MiddleLeft;
+        content.Add(roleTag);
+
         var dot = new VisualElement();
         dot.style.width = 8;
         dot.style.height = 8;
@@ -100,46 +213,25 @@ public sealed class ClockworkBatchControlTab : BatchControlTab
         dot.style.borderBottomLeftRadius = 4;
         dot.style.borderBottomRightRadius = 4;
         dot.style.backgroundColor = new StyleColor(
-            wire.Asserting ? new Color(0.45f, 0.85f, 0.35f) : new Color(0.40f, 0.40f, 0.42f));
+            automator.Asserting ? new Color(0.45f, 0.85f, 0.35f) : new Color(0.40f, 0.40f, 0.42f));
         content.Add(dot);
 
-        var label = new Label($"{from.DisplayName}  →  {to.DisplayName}");
+        var label = new Label(automator.DisplayName);
         label.style.color = new StyleColor(new Color(0.92f, 0.86f, 0.72f));
         label.style.flexGrow = 1;
         label.style.fontSize = 12;
         content.Add(label);
 
-        // No items for v1 — just a static row.
-        return new BatchControlRow(content, System.Array.Empty<IBatchControlRowItem>());
-    }
+        var pos = automator.WorldPosition;
+        var pingBtn = new Button(() => _ping.Focus(pos)) { text = "→" };
+        pingBtn.style.width = 22;
+        pingBtn.style.height = 18;
+        pingBtn.style.marginLeft = 4;
+        pingBtn.style.fontSize = 11;
+        pingBtn.style.backgroundColor = new StyleColor(new Color(0.16f, 0.14f, 0.12f));
+        pingBtn.style.color = new StyleColor(new Color(0.92f, 0.86f, 0.72f));
+        content.Add(pingBtn);
 
-    /// Build a short descriptive header for unnamed flows so the player can
-    /// recognize them at a glance. e.g. `East gauge → 2 receivers`.
-    private static string DescribeFlow(PartitionSnapshot partition)
-    {
-        // Pick the first emitter (lexicographically by id for stability).
-        AutomatorView? firstEmitter = null;
-        foreach (var a in partition.Automators
-                     .OrderBy(a => a.AutomatorId, System.StringComparer.Ordinal))
-        {
-            if ((a.Role & AutomatorRole.Emitter) != 0)
-            {
-                firstEmitter = a;
-                break;
-            }
-        }
-        if (firstEmitter == null)
-            return $"(empty flow: {partition.Automators.Count} pieces)";
-
-        // Count distinct receivers driven by this flow.
-        var receivers = new HashSet<string>();
-        foreach (var w in partition.Wires) receivers.Add(w.ToAutomatorId);
-        int recv = receivers.Count;
-        var sb = new StringBuilder();
-        sb.Append(firstEmitter.DisplayName);
-        sb.Append(" → ");
-        sb.Append(recv);
-        sb.Append(recv == 1 ? " receiver" : " receivers");
-        return sb.ToString();
+        return new BatchControlRow(content, Array.Empty<IBatchControlRowItem>());
     }
 }
