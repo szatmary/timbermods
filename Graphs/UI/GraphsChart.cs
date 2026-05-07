@@ -200,14 +200,10 @@ public sealed class GraphsChart
             candidates.Add((def, y, _legend.ResolveIcon(def)));
         }
 
-        // Sort by preferred y ascending, then pack vertically so adjacent
-        // markers don't overlap. Two passes:
-        //   forward — anchor at minY, push each marker down to clear the
-        //             previous one (ys[i] = max(preferred, prev + MarkerHeight))
-        //   backward — clamp last marker at maxY, pull earlier markers up
-        //              just enough to clear the next one
-        // If everything still won't fit between [minY, maxY], the early
-        // markers stay clamped and later ones overlap. That's acceptable.
+        // Forward pass anchors at minY and pushes each marker below the
+        // previous; backward pass clamps the last at maxY and pulls earlier
+        // ones up to clear the next. When [minY,maxY] can't fit them all,
+        // late markers overlap the earlier ones (acceptable for v1).
         candidates.Sort((a, b) => a.Y.CompareTo(b.Y));
         float gutterX = rect.xMax - GutterWidth + 3;
 
@@ -661,10 +657,9 @@ public sealed class GraphsChart
         }
     }
 
-    /// Draw a line segment as a chain of overlapping axis-aligned rects.
-    /// The rotated-quad mesh approach via `ctx.Allocate(4, 6)` was unreliable
-    /// in Timberborn's UIToolkit pipeline — FillRect with axis-aligned geometry
-    /// always renders, so we subdivide the segment and paint small stamps.
+    /// Draws a line segment as a chain of overlapping axis-aligned stamps.
+    /// Rotated-quad meshes rendered unreliably under Timberborn's UIToolkit
+    /// pipeline; axis-aligned FillRect always paints.
     private static void DrawSegment(
         MeshGenerationContext ctx, Vector2 a, Vector2 b, Color color, float thickness)
     {
