@@ -163,7 +163,7 @@ public sealed class GraphsLegend
             if (def.Id.StartsWith("good.", StringComparison.Ordinal))
             {
                 var goodId = def.Id.Substring("good.".Length);
-                try { groupId = _goodService.GetGood(goodId)?.GoodGroupId; } catch { }
+                groupId = _goodService.GetGood(goodId)?.GoodGroupId;
 
                 // Merge water-family goods so Water and Badwater sit together.
                 if (goodId == "Water" || goodId == "Badwater")
@@ -331,10 +331,7 @@ public sealed class GraphsLegend
     }
 
     private Sprite? TryGoodIcon(string goodId)
-    {
-        try { return _goodService.GetGood(goodId)?.Icon.Asset; }
-        catch { return null; }
-    }
+        => _goodService.GetGood(goodId)?.Icon.Asset;
 
     private string ResolveDisplayName(MetricDefinition def, out Sprite? icon)
     {
@@ -344,27 +341,20 @@ public sealed class GraphsLegend
             def.Id.StartsWith("good.", StringComparison.Ordinal))
         {
             var goodId = def.Id.Substring("good.".Length);
-            try
+            var spec = _goodService.GetGood(goodId);
+            if (spec != null)
             {
-                var spec = _goodService.GetGood(goodId);
-                if (spec != null)
-                {
-                    icon = spec.Icon.Asset;
-                    var display = spec.DisplayName.Value;
-                    if (!string.IsNullOrEmpty(display)) return TitleCase(display);
-                }
+                icon = spec.Icon.Asset;
+                var display = spec.DisplayName.Value;
+                if (!string.IsNullOrEmpty(display)) return TitleCase(display);
             }
-            catch { }
             return TitleCase(goodId);
         }
 
         var fallback = def.NameLocKey;
-        try
-        {
-            var t = _loc.T(def.NameLocKey);
-            if (!string.IsNullOrEmpty(t) && t != def.NameLocKey) return TitleCase(t);
-        }
-        catch { }
+        var t = _loc.T(def.NameLocKey);
+        if (!string.IsNullOrEmpty(t) && t != def.NameLocKey) return TitleCase(t);
+
         // Strip everything before the last '.' so "Graphs.Metric.Total" → "Total".
         int lastDot = fallback.LastIndexOf('.');
         var raw = lastDot >= 0 && lastDot < fallback.Length - 1

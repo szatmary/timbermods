@@ -9,10 +9,6 @@ namespace Graphs.Metrics.Providers;
 /// counters. Settlement-wide values come from `PopulationService.GlobalPopulationData`
 /// which the game updates continuously. Per-district values use
 /// `PopulationDataCollector.CollectData` against the selected district.
-///
-/// TODO: injury detection — see NOTES.md. Injury is encoded as an active
-/// `Need` with id `InjuryNeedId`; counting requires walking each Character's
-/// `Needs.AllNeeds` every sample.
 public sealed class PopulationMetricProvider : IMetricProvider
 {
     private readonly PopulationService _populationService;
@@ -78,9 +74,8 @@ public sealed class PopulationMetricProvider : IMetricProvider
     }
 
     private MetricDefinition FromData(
-        string id, string locKey, System.Func<PopulationData, int> extract, string? subGroup = null) =>
-        new(id, locKey, MetricCategory.Population, MetricScope.District,
-            districtName => ExtractFor(districtName, extract), subGroup);
+        string id, string locKey, System.Func<PopulationData, int> extract, string? subGroup = null)
+        => InCategory(MetricCategory.Population, id, locKey, extract, subGroup);
 
     private MetricDefinition InCategory(
         MetricCategory category, string id, string locKey,

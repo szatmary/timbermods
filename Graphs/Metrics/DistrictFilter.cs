@@ -3,7 +3,6 @@ using System.Linq;
 using Timberborn.EntitySystem;
 using Timberborn.GameDistricts;
 using Timberborn.SingletonSystem;
-using UnityEngine;
 
 namespace Graphs.Metrics;
 
@@ -32,8 +31,6 @@ public sealed class DistrictFilter : ILoadableSingleton
         if (dc == null) return null;
         return dc.TryGetComponent(out EntityComponent ec) ? ec.EntityId : (Guid?)null;
     }
-
-    public DistrictCenter? DistrictCenter => _districtCenter;
 
     public event Action? Changed;
 

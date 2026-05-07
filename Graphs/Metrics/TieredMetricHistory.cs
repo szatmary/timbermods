@@ -40,7 +40,6 @@ public sealed class TieredMetricHistory
     private float _midLastTimestamp;
     private float _oldLastTimestamp;
 
-    public int MetricCount => _metricCount;
     internal MetricHistory Recent => _recent;
     internal MetricHistory Mid => _mid;
     internal MetricHistory Old => _old;
@@ -79,15 +78,6 @@ public sealed class TieredMetricHistory
 
         if (_midCount >= MidDecimation) FlushMid();
         if (_oldCount >= OldDecimation) FlushOld();
-    }
-
-    /// Force-flush any pending Mid/Old accumulators. Used at the end of
-    /// migration paths so the tail of the migrated samples isn't stranded
-    /// in the accumulator.
-    public void FlushPending()
-    {
-        if (_midCount > 0) FlushMid();
-        if (_oldCount > 0) FlushOld();
     }
 
     private void FlushMid()

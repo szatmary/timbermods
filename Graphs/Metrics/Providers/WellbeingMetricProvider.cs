@@ -10,23 +10,8 @@ namespace Graphs.Metrics.Providers;
 
 /// Registers wellbeing metrics (average, minimum) and need-satisfaction metrics
 /// (hunger/food, thirst/water) aggregated across beavers in the filter scope.
-///
-/// Key API notes — these differed from the NOTES.md hints and were confirmed
-/// via metadata probe:
-/// - `WellbeingService.GetAverageWellbeing(...)` does NOT exist. The aggregation
-///   type `WellbeingTrackerRegistry` is internal, and both the global / district
-///   wrappers (`GlobalWellbeingTrackerRegistry`, `DistrictWellbeingTrackerRegistry`)
-///   are internal too — we can't inject them via Bindito. Instead we iterate
-///   `district.GetComponent<DistrictPopulation>().Beavers` directly and read
-///   `WellbeingTracker.Wellbeing` (which IS public) to compute min and average
-///   ourselves. One pass serves both metrics.
-/// - `WellbeingTracker.Wellbeing` is `int`, not `float`.
-/// - `NeedManager` has no `GetSatisfaction`. Satisfaction is computed as
-///   `GetNeedPoints(id) / GetNeedSpec(id).MaximumValue`.
-/// - The "hunger" / "thirst" need ids are faction-specific (Folktails and Iron
-///   Teeth use different spec ids). The resolved ids live as private static
-///   strings on `NeedModificationService` (`FoodNeedId`, `WaterNeedId`).
-///   We reflect them once on first use.
+/// The hunger/thirst need-ids are faction-specific and resolved via
+/// reflection on `NeedModificationService` once on first use.
 public sealed class WellbeingMetricProvider : IMetricProvider
 {
     private readonly DistrictCenterRegistry _districtCenterRegistry;
@@ -121,26 +106,12 @@ public sealed class WellbeingMetricProvider : IMetricProvider
             }
             foreach (var beaver in population.Beavers)
             {
-                WellbeingTracker? tracker;
-                try
-                {
-                    tracker = beaver.GetComponent<WellbeingTracker>();
-                }
-                catch
-                {
-                    continue;
-                }
-                if (tracker == null)
-                {
-                    continue;
-                }
+                var tracker = beaver.GetComponent<WellbeingTracker>();
+                if (tracker == null) continue;
                 var w = tracker.Wellbeing;
                 sum += w;
                 count++;
-                if (w < min)
-                {
-                    min = w;
-                }
+                if (w < min) min = w;
             }
         }
         if (count == 0)
@@ -174,30 +145,18 @@ public sealed class WellbeingMetricProvider : IMetricProvider
             }
             foreach (var beaver in population.Beavers)
             {
-                try
-                {
-                    var needManager = beaver.GetComponent<NeedManager>();
-                    if (needManager == null || !needManager.HasNeed(needId))
-                    {
-                        continue;
-                    }
-                    var spec = needManager.GetNeedSpec(needId);
-                    if (spec == null) continue;
-                    float min = spec.MinimumValue;
-                    float max = spec.MaximumValue;
-                    float range = max - min;
-                    if (range <= 0f) continue;
-                    var points = needManager.GetNeedPoints(needId);
-                    // Normalize to 0..1 over the need's actual min..max range.
-                    // 0 = at minimum (most unfavorable), 1 = at maximum (fully satisfied).
-                    sum += (points - min) / range;
-                    count++;
-                }
-                catch
-                {
-                    // Skip any beaver whose component lookup throws —
-                    // keeps one broken entity from zeroing the metric.
-                }
+                var needManager = beaver.GetComponent<NeedManager>();
+                if (needManager == null || !needManager.HasNeed(needId)) continue;
+                var spec = needManager.GetNeedSpec(needId);
+                if (spec == null) continue;
+                float min = spec.MinimumValue;
+                float max = spec.MaximumValue;
+                float range = max - min;
+                if (range <= 0f) continue;
+                // Normalize to 0..1 over the need's actual min..max range
+                // (0 = minimum / most unfavourable, 1 = maximum / satisfied).
+                sum += (needManager.GetNeedPoints(needId) - min) / range;
+                count++;
             }
         }
         return count > 0 ? sum / count : float.NaN;

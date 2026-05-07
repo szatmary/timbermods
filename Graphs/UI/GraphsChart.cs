@@ -28,6 +28,7 @@ public sealed class GraphsChart
     private readonly GameIcons _icons;
 
     private VisualElement? _element;
+    private bool _subscribed;
 
     // Cursor-tracking state for the hover tooltip.
     private Vector2 _cursorLocal;
@@ -76,9 +77,17 @@ public sealed class GraphsChart
         // Transparent so the game's panel background (wood frame) shows
         // through — the chart paints grid, weather bands, and lines itself.
         _element.generateVisualContent += Draw;
-        _range.Changed += OnRepaintTrigger;
-        _legend.Changed += OnRepaintTrigger;
-        _sampler.OnSampled += OnRepaintTrigger;
+
+        // Subscribe once per chart lifetime, not per-Build. GraphsWindow may
+        // call Build again on each Open; subscribing there would leak the
+        // old element through the singleton's delegate list.
+        if (!_subscribed)
+        {
+            _range.Changed += Repaint;
+            _legend.Changed += Repaint;
+            _sampler.OnSampled += Repaint;
+            _subscribed = true;
+        }
         _element.RegisterCallback<GeometryChangedEvent>(_ => UpdateEndIcons());
 
         // Hover tracking: a vertical cursor line + a floating tooltip panel.
@@ -129,13 +138,6 @@ public sealed class GraphsChart
     }
 
     public void Repaint()
-    {
-        _element?.MarkDirtyRepaint();
-        UpdateEndIcons();
-        if (_cursorInside) RefreshTooltip();
-    }
-
-    private void OnRepaintTrigger()
     {
         _element?.MarkDirtyRepaint();
         UpdateEndIcons();

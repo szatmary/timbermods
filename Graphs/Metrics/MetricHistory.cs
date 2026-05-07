@@ -22,7 +22,6 @@ public sealed class MetricHistory
 
     public int MetricCount => _metricCount;
     public int Count => _count;
-    public int Capacity => _capacity;
 
     public MetricHistory(int capacity, int metricCount)
     {
@@ -51,9 +50,8 @@ public sealed class MetricHistory
         if (_count < _capacity) _count++;
     }
 
-    /// Oldest-to-newest enumeration of sample indices in the logical buffer.
-    /// Returns the physical slot index for each step.
-    public int PhysicalIndex(int logicalIndex)
+    /// Returns the physical slot index for a logical index (0 = oldest).
+    private int PhysicalIndex(int logicalIndex)
     {
         if ((uint)logicalIndex >= (uint)_count) throw new ArgumentOutOfRangeException(nameof(logicalIndex));
         int start = _count < _capacity ? 0 : _head;
@@ -79,13 +77,17 @@ public sealed class MetricHistory
     public float ReadTimestamp(int logicalIndex) => _timestamps[PhysicalIndex(logicalIndex)];
 
     /// Returns the lowest logical index whose timestamp >= threshold, or
-    /// Count if all samples are older. Timestamps are monotonic.
+    /// Count if all samples are older. Timestamps are monotonic so binary
+    /// search applies.
     public int FindFirstAtOrAfter(float timestamp)
     {
-        // Linear scan — Count is at most 48 000, called at most ~60 times/sec
-        // during chart redraw — fine.
-        for (int i = 0; i < _count; i++)
-            if (ReadTimestamp(i) >= timestamp) return i;
-        return _count;
+        int lo = 0, hi = _count;
+        while (lo < hi)
+        {
+            int mid = (lo + hi) >> 1;
+            if (ReadTimestamp(mid) < timestamp) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
     }
 }

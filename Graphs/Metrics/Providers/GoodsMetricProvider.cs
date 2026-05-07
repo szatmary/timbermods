@@ -4,7 +4,6 @@ using System.Linq;
 using Timberborn.GameDistricts;
 using Timberborn.Goods;
 using Timberborn.ResourceCountingSystem;
-using UnityEngine;
 
 namespace Graphs.Metrics.Providers;
 
@@ -17,8 +16,6 @@ public sealed class GoodsMetricProvider : IMetricProvider
     private readonly IGoodService _goodService;
     private readonly ResourceCountingService _resourceCounting;
     private readonly DistrictCenterRegistry _districts;
-
-    private static bool _loggedFailure;
 
     public GoodsMetricProvider(
         IGoodService goodService,
@@ -50,27 +47,15 @@ public sealed class GoodsMetricProvider : IMetricProvider
 
     private float TotalStock(string goodId, string? districtName)
     {
-        try
-        {
-            if (districtName is null)
-                return _resourceCounting.GetGlobalResourceCount(goodId).AllStock;
+        if (districtName is null)
+            return _resourceCounting.GetGlobalResourceCount(goodId).AllStock;
 
-            int sum = 0;
-            foreach (var d in _districts.FinishedDistrictCenters)
-            {
-                if (d.DistrictName != districtName) continue;
-                sum += _resourceCounting.GetDistrictResourceCounter(d).GetResourceCount(goodId).AllStock;
-            }
-            return sum;
-        }
-        catch (Exception ex)
+        int sum = 0;
+        foreach (var d in _districts.FinishedDistrictCenters)
         {
-            if (!_loggedFailure)
-            {
-                _loggedFailure = true;
-                Debug.LogWarning($"[Graphs] ResourceCounting lookup failed for '{goodId}': {ex.Message}");
-            }
-            return float.NaN;
+            if (d.DistrictName != districtName) continue;
+            sum += _resourceCounting.GetDistrictResourceCounter(d).GetResourceCount(goodId).AllStock;
         }
+        return sum;
     }
 }

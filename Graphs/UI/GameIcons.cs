@@ -57,17 +57,12 @@ public sealed class GameIcons
         if (_cache.TryGetValue(metricId, out var cached)) return cached;
 
         Sprite? sprite = null;
-        try
+        // LoadAll returns the LoadedAsset list for a path; a single asset
+        // surfaces as the first non-null entry.
+        foreach (var la in _assets.LoadAll<Sprite>(path))
         {
-            // LoadAll is the typical Timberborn pattern — it returns a
-            // LoadedAsset list. For a single asset we just take the first.
-            var loaded = _assets.LoadAll<Sprite>(path);
-            foreach (var la in loaded)
-            {
-                if (la.Asset != null) { sprite = la.Asset; break; }
-            }
+            if (la.Asset != null) { sprite = la.Asset; break; }
         }
-        catch { /* asset missing; stay null */ }
 
         _cache[metricId] = sprite;
         return sprite;
