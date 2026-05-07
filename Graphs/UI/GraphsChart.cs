@@ -70,8 +70,11 @@ public sealed class GraphsChart
     {
         _element = new VisualElement { name = "graphs-chart" };
         _element.style.flexGrow = 1;
-        // Transparent so the game's panel background (wood frame) shows
-        // through — the chart paints grid, weather bands, and lines itself.
+        // Opaque dark backdrop — bands are alpha-blended and the wooden
+        // panel underneath has enough green tint to muddy the colors at
+        // 55% alpha. Painting our own substrate gives the bands a known
+        // dark canvas to read against.
+        _element.style.backgroundColor = new StyleColor(new Color(0.10f, 0.09f, 0.08f, 1f));
         _element.generateVisualContent += Draw;
 
         // Subscribe once per chart lifetime, not per-Build. GraphsWindow may
