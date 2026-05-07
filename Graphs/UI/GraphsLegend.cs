@@ -33,10 +33,7 @@ public sealed class GraphsLegend
     public HashSet<string> VisibleMetricIds { get; } = new();
     public event Action? Changed;
 
-    private readonly Dictionary<string, Label> _valueLabels = new();
     private bool _defaultsApplied;
-
-    private static readonly Color WellbeingTint = new(0.96f, 0.80f, 0.48f);
 
     public GraphsLegend(MetricRegistry registry, IGoodService goodService, ILoc loc, GameIcons icons)
     {
@@ -93,15 +90,6 @@ public sealed class GraphsLegend
     {
         PlayerPrefs.SetString(PrefsKey, string.Join("|", VisibleMetricIds));
         PlayerPrefs.Save();
-    }
-
-    public void UpdateCurrentValues(Func<string, float> valueOf)
-    {
-        foreach (var pair in _valueLabels)
-        {
-            var v = valueOf(pair.Key);
-            pair.Value.text = float.IsNaN(v) ? "—" : v.ToString("0.##", CultureInfo.InvariantCulture);
-        }
     }
 
     private VisualElement BuildCategorySection(
@@ -255,7 +243,7 @@ public sealed class GraphsLegend
             img.style.width = 20; img.style.height = 20;
             img.style.marginRight = 6;
             if (def.Category == MetricCategory.Wellbeing)
-                img.tintColor = WellbeingTint;
+                img.tintColor = GraphColors.WellbeingTint;
             row.Add(img);
         }
         else

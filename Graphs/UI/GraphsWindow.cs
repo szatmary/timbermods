@@ -18,7 +18,6 @@ public sealed class GraphsWindow : IPanelController
     private readonly GraphsLegend _legend;
     private readonly GraphsChart _chart;
     private readonly MetricSampler _sampler;
-    private readonly MetricRegistry _registry;
     private readonly DistrictFilter _filter;
 
     private VisualElement? _root;
@@ -34,7 +33,6 @@ public sealed class GraphsWindow : IPanelController
         GraphsLegend legend,
         GraphsChart chart,
         MetricSampler sampler,
-        MetricRegistry registry,
         DistrictFilter filter)
     {
         _panelStack = panelStack;
@@ -44,7 +42,6 @@ public sealed class GraphsWindow : IPanelController
         _legend = legend;
         _chart = chart;
         _sampler = sampler;
-        _registry = registry;
         _filter = filter;
     }
 
@@ -64,15 +61,12 @@ public sealed class GraphsWindow : IPanelController
         _panelStack.Push(this, hideTop: false, showOverlay: true, isDialog: false, lockSpeed: false);
         _isShown = true;
 
-        _sampler.OnSampled += RefreshValues;
         _filter.Changed += _chart.Repaint;
-        RefreshValues();
     }
 
     public void Close()
     {
         if (!_isShown) return;
-        _sampler.OnSampled -= RefreshValues;
         _filter.Changed -= _chart.Repaint;
 
         _panelStack.Pop(this);
@@ -100,18 +94,6 @@ public sealed class GraphsWindow : IPanelController
 
     // IPanelController: Enter — do nothing special, but signal we handled it.
     public bool OnUIConfirmed() => false;
-
-    private void RefreshValues()
-    {
-        var history = _sampler.Recent;
-        if (history.Count == 0) return;
-        int last = history.Count - 1;
-        _legend.UpdateCurrentValues(id =>
-        {
-            int idx = _registry.IndexOf(id);
-            return idx < 0 ? float.NaN : history.ReadValue(last, idx);
-        });
-    }
 
     private VisualElement Build()
     {

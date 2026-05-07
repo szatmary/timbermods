@@ -16,7 +16,8 @@ namespace Graphs.Metrics;
 ///
 /// Storage is per-district: each finished DistrictCenter (keyed by stable
 /// EntityId) plus a "global" settlement-wide entry get their own tiered
-/// history. The DistrictFilter selects which one the chart sees.
+/// history. The DistrictFilter selects which one the chart sees. When a
+/// district is destroyed, its history is pruned.
 public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISaveableSingleton
 {
     public const int SamplesPerDay = 24;
@@ -25,38 +26,13 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
     /// "no filter / all districts" history.
     public const string GlobalKey = "_global";
 
-    // V3 — per-district tiered storage. Save uses runtime-built keys per
-    // (district key × tier × field), so the singleton just stores a flat
-    // list of district keys plus the metric ids to remap by.
     private static readonly SingletonKey SavedKey = new("GraphsMetricHistoryV3");
     private static readonly ListKey<string> SavedDistrictKeys = new("DistrictKeys");
     private static readonly ListKey<string> SavedMetricIds = new("MetricIds");
 
-    // V2 — single-tier (one history) format. On load with no V3 present,
-    // the V2 data becomes the global history. Per-district views start empty.
-    private static readonly SingletonKey V2SavedKey = new("GraphsMetricHistoryV2");
-    private static readonly ListKey<string> V2SavedMetricIds = new("MetricIds");
-    private static readonly PropertyKey<int>  V2RecentCount      = new("RecentCount");
-    private static readonly ListKey<float>    V2RecentValues     = new("RecentValues");
-    private static readonly ListKey<float>    V2RecentTimestamps = new("RecentTimestamps");
-    private static readonly ListKey<int>      V2RecentWeather    = new("RecentWeather");
-    private static readonly PropertyKey<int>  V2MidCount         = new("MidCount");
-    private static readonly ListKey<float>    V2MidValues        = new("MidValues");
-    private static readonly ListKey<float>    V2MidTimestamps    = new("MidTimestamps");
-    private static readonly ListKey<int>      V2MidWeather       = new("MidWeather");
-    private static readonly PropertyKey<int>  V2OldCount         = new("OldCount");
-    private static readonly ListKey<float>    V2OldValues        = new("OldValues");
-    private static readonly ListKey<float>    V2OldTimestamps    = new("OldTimestamps");
-    private static readonly ListKey<int>      V2OldWeather       = new("OldWeather");
-
-    // V1 — flat single ring-buffer. Replayed through Append on load (so the
-    // tiered structure populates organically).
-    private static readonly SingletonKey V1SavedKey = new("GraphsMetricHistory");
-    private static readonly PropertyKey<int> V1SavedSampleCount = new("SampleCount");
-    private static readonly ListKey<string>  V1SavedMetricIds   = new("MetricIds");
-    private static readonly ListKey<float>   V1SavedValues      = new("Values");
-    private static readonly ListKey<float>   V1SavedTimestamps  = new("Timestamps");
-    private static readonly ListKey<int>     V1SavedWeather     = new("Weather");
+    /// Tier prefixes used in dynamically-built per-tier persistence keys.
+    /// "R" = recent, "M" = mid, "O" = old. Append `_<districtKey>_<C|V|T|W>`.
+    private static readonly string[] TierPrefixes = { "R", "M", "O" };
 
     private readonly IDayNightCycle _dayNightCycle;
     private readonly MetricRegistry _registry;
@@ -64,15 +40,12 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
     private readonly DistrictCenterRegistry _districts;
     private readonly WeatherStateSampler _weather;
     private readonly ISingletonLoader _singletonLoader;
+    private readonly EventBus _eventBus;
 
     private readonly Dictionary<string, TieredMetricHistory> _histories = new();
     private int _lastSampleIndex = int.MinValue;
     private float[]? _scratch;
     private readonly HashSet<string> _loggedFailures = new();
-
-    /// Recent (full-res) tier of the currently-selected district (or global).
-    /// Used for "current value" reads in the legend.
-    public MetricHistory Recent => GetOrCreate(CurrentDistrictKey()).Recent;
 
     /// Returns the tier whose resolution best matches the requested lookback,
     /// for the currently-selected district (or global).
@@ -87,7 +60,8 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         DistrictFilter filter,
         DistrictCenterRegistry districts,
         WeatherStateSampler weather,
-        ISingletonLoader singletonLoader)
+        ISingletonLoader singletonLoader,
+        EventBus eventBus)
     {
         _dayNightCycle = dayNightCycle;
         _registry = registry;
@@ -95,14 +69,15 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         _districts = districts;
         _weather = weather;
         _singletonLoader = singletonLoader;
+        _eventBus = eventBus;
     }
 
     public void Load()
     {
         _scratch = new float[_registry.Count];
-        // Always have a global history present.
         GetOrCreate(GlobalKey);
         RestoreFromSave();
+        _eventBus.Register(this);
     }
 
     public void Tick()
@@ -115,6 +90,21 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         if (sampleIndex == _lastSampleIndex) return;
         _lastSampleIndex = sampleIndex;
         TakeSample(partialDay);
+    }
+
+    /// Drop per-district histories whose district no longer exists. Keeps
+    /// the global key. Prevents unbounded growth of in-memory + saved data.
+    [OnEvent]
+    public void OnDistrictCenterRegistryChanged(DistrictCenterRegistryChangedEvent _)
+    {
+        var live = new HashSet<string> { GlobalKey };
+        foreach (var dc in _districts.AllDistrictCenters)
+        {
+            var id = DistrictFilter.GetEntityId(dc);
+            if (id != null) live.Add(id.Value.ToString());
+        }
+        var stale = _histories.Keys.Where(k => !live.Contains(k)).ToList();
+        foreach (var k in stale) _histories.Remove(k);
     }
 
     private string CurrentDistrictKey()
@@ -136,23 +126,14 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
     private void TakeSample(float partialDay)
     {
         byte weather = _weather.Sample();
-
-        // Global / "all districts" history — sample with null district.
         SampleInto(GetOrCreate(GlobalKey), district: null, weather, partialDay);
-
-        // One history per finished district, keyed by stable entity id.
         foreach (var dc in _districts.FinishedDistrictCenters)
         {
             var id = DistrictFilter.GetEntityId(dc);
             if (id == null) continue;
             SampleInto(GetOrCreate(id.Value.ToString()), dc.DistrictName, weather, partialDay);
         }
-
-        try { OnSampled?.Invoke(); }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[Graphs] OnSampled handler threw: {ex.Message}");
-        }
+        OnSampled?.Invoke();
     }
 
     private void SampleInto(TieredMetricHistory h, string? district, byte weather, float partialDay)
@@ -161,6 +142,9 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         for (int i = 0; i < metrics.Count; i++)
         {
             var def = metrics[i];
+            // ValueFn can transiently throw when a building is destroyed
+            // between samples. Log once per metric id then store NaN so
+            // the chart shows a gap rather than the whole sample failing.
             try { _scratch![i] = def.ValueFn(district); }
             catch (Exception ex)
             {
@@ -185,31 +169,23 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         foreach (var key in keys)
         {
             var h = _histories[key];
-            SaveTier(saver, h.Recent,
-                new PropertyKey<int>($"R_{key}_C"),
-                new ListKey<float>($"R_{key}_V"),
-                new ListKey<float>($"R_{key}_T"),
-                new ListKey<int>($"R_{key}_W"));
-            SaveTier(saver, h.Mid,
-                new PropertyKey<int>($"M_{key}_C"),
-                new ListKey<float>($"M_{key}_V"),
-                new ListKey<float>($"M_{key}_T"),
-                new ListKey<int>($"M_{key}_W"));
-            SaveTier(saver, h.Old,
-                new PropertyKey<int>($"O_{key}_C"),
-                new ListKey<float>($"O_{key}_V"),
-                new ListKey<float>($"O_{key}_T"),
-                new ListKey<int>($"O_{key}_W"));
+            var tiers = new[] { h.Recent, h.Mid, h.Old };
+            for (int i = 0; i < TierPrefixes.Length; i++)
+                SaveTier(saver, tiers[i], TierKeyPrefix(TierPrefixes[i], key));
         }
     }
 
-    private static void SaveTier(
-        IObjectSaver saver, MetricHistory tier,
-        PropertyKey<int> countKey, ListKey<float> valuesKey,
-        ListKey<float> timestampsKey, ListKey<int> weatherKey)
+    private static string TierKeyPrefix(string tierLetter, string districtKey)
+        => $"{tierLetter}_{districtKey}_";
+
+    private static void SaveTier(IObjectSaver saver, MetricHistory tier, string prefix)
     {
         int n = tier.Count;
         int m = tier.MetricCount;
+        var countKey = new PropertyKey<int>(prefix + "C");
+        var valuesKey = new ListKey<float>(prefix + "V");
+        var timestampsKey = new ListKey<float>(prefix + "T");
+        var weatherKey = new ListKey<int>(prefix + "W");
         if (n == 0)
         {
             saver.Set(countKey, 0);
@@ -236,38 +212,10 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
     private void RestoreFromSave()
     {
         if (_scratch is null) return;
+        if (!_singletonLoader.TryGetSingleton(SavedKey, out var loader)) return;
 
-        if (_singletonLoader.TryGetSingleton(SavedKey, out var v3Loader))
-        {
-            RestoreV3(v3Loader);
-            return;
-        }
-        if (_singletonLoader.TryGetSingleton(V2SavedKey, out var v2Loader))
-        {
-            RestoreV2AsGlobal(v2Loader);
-            return;
-        }
-        if (_singletonLoader.TryGetSingleton(V1SavedKey, out var v1Loader))
-        {
-            RestoreV1AsGlobal(v1Loader);
-            return;
-        }
-    }
-
-    private void RestoreV3(IObjectLoader loader)
-    {
-        List<string> savedMetricIds;
-        List<string> savedDistrictKeys;
-        try
-        {
-            savedMetricIds = loader.Get(SavedMetricIds);
-            savedDistrictKeys = loader.Get(SavedDistrictKeys);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[Graphs] V3 restore header failed: {ex.Message}");
-            return;
-        }
+        var savedMetricIds = loader.Get(SavedMetricIds);
+        var savedDistrictKeys = loader.Get(SavedDistrictKeys);
         if (savedMetricIds.Count == 0 || savedDistrictKeys.Count == 0) return;
 
         var savedToCurrent = new int[savedMetricIds.Count];
@@ -279,18 +227,11 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         foreach (var key in savedDistrictKeys)
         {
             var h = GetOrCreate(key);
-            totalRestored += RestoreTier(loader, h.Recent, savedToCurrent,
-                new PropertyKey<int>($"R_{key}_C"), new ListKey<float>($"R_{key}_V"),
-                new ListKey<float>($"R_{key}_T"), new ListKey<int>($"R_{key}_W"),
-                ref latestTimestamp);
-            totalRestored += RestoreTier(loader, h.Mid, savedToCurrent,
-                new PropertyKey<int>($"M_{key}_C"), new ListKey<float>($"M_{key}_V"),
-                new ListKey<float>($"M_{key}_T"), new ListKey<int>($"M_{key}_W"),
-                ref latestTimestamp);
-            totalRestored += RestoreTier(loader, h.Old, savedToCurrent,
-                new PropertyKey<int>($"O_{key}_C"), new ListKey<float>($"O_{key}_V"),
-                new ListKey<float>($"O_{key}_T"), new ListKey<int>($"O_{key}_W"),
-                ref latestTimestamp);
+            var tiers = new[] { h.Recent, h.Mid, h.Old };
+            for (int i = 0; i < TierPrefixes.Length; i++)
+                totalRestored += RestoreTier(loader, tiers[i],
+                    TierKeyPrefix(TierPrefixes[i], key),
+                    savedToCurrent, ref latestTimestamp);
         }
 
         Debug.Log(
@@ -301,135 +242,25 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
             _lastSampleIndex = (int)Math.Floor(latestTimestamp * SamplesPerDay);
     }
 
-    /// V2 had a single per-game history (no per-district split). Restore it
-    /// into the global key; per-district views start empty.
-    private void RestoreV2AsGlobal(IObjectLoader loader)
-    {
-        List<string> savedMetricIds;
-        try { savedMetricIds = loader.Get(V2SavedMetricIds); }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[Graphs] V2 restore header failed: {ex.Message}");
-            return;
-        }
-        if (savedMetricIds.Count == 0) return;
-
-        var savedToCurrent = new int[savedMetricIds.Count];
-        for (int i = 0; i < savedMetricIds.Count; i++)
-            savedToCurrent[i] = _registry.IndexOf(savedMetricIds[i]);
-
-        var h = GetOrCreate(GlobalKey);
-        int restored = 0;
-        float latestTimestamp = float.NegativeInfinity;
-        restored += RestoreTier(loader, h.Recent, savedToCurrent,
-            V2RecentCount, V2RecentValues, V2RecentTimestamps, V2RecentWeather, ref latestTimestamp);
-        restored += RestoreTier(loader, h.Mid, savedToCurrent,
-            V2MidCount, V2MidValues, V2MidTimestamps, V2MidWeather, ref latestTimestamp);
-        restored += RestoreTier(loader, h.Old, savedToCurrent,
-            V2OldCount, V2OldValues, V2OldTimestamps, V2OldWeather, ref latestTimestamp);
-
-        Debug.Log($"[Graphs] V2→V3 migration: restored {restored} samples to global; latest timestamp {latestTimestamp:0.00}");
-
-        if (latestTimestamp > float.NegativeInfinity)
-            _lastSampleIndex = (int)Math.Floor(latestTimestamp * SamplesPerDay);
-    }
-
-    /// V1 fallback: replay the flat single-buffer history through Append
-    /// (into the global history) so it lands across the tiered structure.
-    private void RestoreV1AsGlobal(IObjectLoader loader)
-    {
-        int sampleCount;
-        List<string> savedMetricIds;
-        List<float> values;
-        List<float> timestamps;
-        List<int> weather;
-        try
-        {
-            sampleCount = loader.Get(V1SavedSampleCount);
-            savedMetricIds = loader.Get(V1SavedMetricIds);
-            values = loader.Get(V1SavedValues);
-            timestamps = loader.Get(V1SavedTimestamps);
-            weather = loader.Get(V1SavedWeather);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[Graphs] V1 save restore failed: {ex.Message}");
-            return;
-        }
-        if (sampleCount <= 0 || savedMetricIds.Count == 0) return;
-
-        int savedMetricCount = savedMetricIds.Count;
-        if (values.Count != sampleCount * savedMetricCount ||
-            timestamps.Count != sampleCount ||
-            weather.Count != sampleCount)
-        {
-            Debug.LogWarning("[Graphs] V1 saved history shape mismatch; discarding.");
-            return;
-        }
-
-        var savedToCurrent = new int[savedMetricCount];
-        for (int i = 0; i < savedMetricCount; i++)
-            savedToCurrent[i] = _registry.IndexOf(savedMetricIds[i]);
-
-        int currentMetricCount = _registry.Count;
-        var row = new float[currentMetricCount];
-
-        var globalHistory = GetOrCreate(GlobalKey);
-        for (int s = 0; s < sampleCount; s++)
-        {
-            for (int m = 0; m < currentMetricCount; m++) row[m] = float.NaN;
-            int baseIndex = s * savedMetricCount;
-            for (int sm = 0; sm < savedMetricCount; sm++)
-            {
-                int cm = savedToCurrent[sm];
-                if (cm >= 0 && cm < currentMetricCount)
-                    row[cm] = values[baseIndex + sm];
-            }
-            globalHistory.Append(row, (byte)weather[s], timestamps[s]);
-        }
-
-        // Force-flush any partial Mid/Old buckets so the tail of the V1
-        // samples isn't stranded in the in-memory accumulator.
-        globalHistory.FlushPending();
-
-        Debug.Log(
-            $"[Graphs] V1→V3 migration: {sampleCount} samples → global; " +
-            $"timestamps {timestamps[0]:0.00}..{timestamps[sampleCount - 1]:0.00}");
-
-        _lastSampleIndex = (int)Math.Floor(timestamps[sampleCount - 1] * SamplesPerDay);
-    }
-
     private int RestoreTier(
-        IObjectLoader loader, MetricHistory tier, int[] savedToCurrent,
-        PropertyKey<int> countKey, ListKey<float> valuesKey,
-        ListKey<float> timestampsKey, ListKey<int> weatherKey,
-        ref float latestTimestamp)
+        IObjectLoader loader, MetricHistory tier, string prefix,
+        int[] savedToCurrent, ref float latestTimestamp)
     {
-        int sampleCount;
-        List<float> values;
-        List<float> timestamps;
-        List<int> weather;
-        try
-        {
-            sampleCount = loader.Get(countKey);
-            values = loader.Get(valuesKey);
-            timestamps = loader.Get(timestampsKey);
-            weather = loader.Get(weatherKey);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[Graphs] tier restore failed for '{countKey}': {ex.Message}");
-            return 0;
-        }
+        int sampleCount = loader.Get(new PropertyKey<int>(prefix + "C"));
         if (sampleCount <= 0) return 0;
+        var values = loader.Get(new ListKey<float>(prefix + "V"));
+        var timestamps = loader.Get(new ListKey<float>(prefix + "T"));
+        var weather = loader.Get(new ListKey<int>(prefix + "W"));
 
         int savedMetricCount = savedToCurrent.Length;
         if (values.Count != sampleCount * savedMetricCount ||
             timestamps.Count != sampleCount ||
             weather.Count != sampleCount)
         {
-            Debug.LogWarning("[Graphs] tier shape mismatch; skipping tier.");
-            return 0;
+            throw new InvalidOperationException(
+                $"[Graphs] tier shape mismatch under prefix '{prefix}': " +
+                $"sampleCount={sampleCount}, values={values.Count}, " +
+                $"timestamps={timestamps.Count}, weather={weather.Count}");
         }
 
         int currentMetricCount = _registry.Count;

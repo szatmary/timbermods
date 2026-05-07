@@ -8,6 +8,10 @@ namespace Graphs.UI;
 /// metric id so the legend swatch and the chart line always match.
 public static class GraphColors
 {
+    /// Tint applied to the wellbeing-category legend / gutter icons (warm
+    /// gold) so the wellbeing / hunger / thirst trio reads as one group.
+    public static readonly Color WellbeingTint = new(0.96f, 0.80f, 0.48f);
+
     private static readonly Color[] Palette =
     {
         new(0.92f, 0.72f, 0.39f), // warm wood

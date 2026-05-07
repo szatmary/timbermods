@@ -9,7 +9,4 @@ public enum MetricCategory
     Bots,
     Employment,
     Wellbeing,
-    // Statistics category exists but its provider is unregistered for now —
-    // we may bring it back later.
-    Statistics,
 }

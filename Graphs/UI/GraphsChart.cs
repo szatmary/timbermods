@@ -21,10 +21,6 @@ public sealed class GraphsChart
 
     private static Color WithAlpha(Color c, float a) => new(c.r, c.g, c.b, a);
 
-    // Fixed tint applied to every Wellbeing-category icon so the three
-    // metrics (wellbeing / hunger / thirst) read as a single thematic group.
-    private static readonly Color WellbeingTint = new(0.96f, 0.80f, 0.48f);
-
     private readonly MetricSampler _sampler;
     private readonly GraphsRangeSelector _range;
     private readonly MetricRegistry _registry;
@@ -277,7 +273,7 @@ public sealed class GraphsChart
                 // Wellbeing-category icons get a category tint (warm gold)
                 // across wellbeing / hunger / thirst so they read as a group.
                 img.tintColor = c.Def.Category == MetricCategory.Wellbeing
-                    ? WellbeingTint
+                    ? GraphColors.WellbeingTint
                     : Color.white;
             }
             img.style.display = DisplayStyle.Flex;
