@@ -6,18 +6,14 @@ namespace Graphs.UI;
 
 public sealed class GraphsChart
 {
-    // Fallback tints used until we've successfully sampled the drought /
-    // badtide notification banners. Once sampled, the banner's average hue
-    // replaces the fallback (still applied at low alpha for the band fill).
-    private static readonly Color FallbackDroughtColor = new(0.88f, 0.45f, 0.12f);
-    private static readonly Color FallbackBadtideColor = new(0.55f, 0.20f, 0.70f);
+    // Background tints for weather bands. Picked from the dominant opaque
+    // color of each in-game `weather-notification-{dry,badtide}` banner
+    // (UnityPy extraction of resources.assets) so the chart's bands match
+    // the colour the player already associates with each weather event.
     private const float WeatherBandAlpha = 0.22f;
-
-    private Color _droughtColor = WithAlpha(FallbackDroughtColor, WeatherBandAlpha);
-    private Color _badtideColor = WithAlpha(FallbackBadtideColor, WeatherBandAlpha);
-    private bool _weatherColorsSampled;
-
     private const float WeatherBandRadius = 16f;
+    private static readonly Color DroughtColor = WithAlpha(new(0.894f, 0.518f, 0.047f), WeatherBandAlpha);  // #e4840c
+    private static readonly Color BadtideColor = WithAlpha(new(0.612f, 0.235f, 0.110f), WeatherBandAlpha);  // #9c3c1c
 
     private static Color WithAlpha(Color c, float a) => new(c.r, c.g, c.b, a);
 
@@ -318,79 +314,6 @@ public sealed class GraphsChart
             _endLabelPool[i].style.display = DisplayStyle.None;
     }
 
-    /// Samples the average hue of each weather notification banner so the
-    /// band color matches the sprite the user would see in the HUD. Runs
-    /// once on first paint; silently falls back to the hardcoded tints if
-    /// the sprite texture isn't readable (common for asset-bundle sprites).
-    private void EnsureWeatherColorsSampled()
-    {
-        if (_weatherColorsSampled) return;
-        _weatherColorsSampled = true;
-
-        var drought = TrySampleDominantColor(_icons.TryGet("weather.drought"));
-        if (drought.HasValue) _droughtColor = WithAlpha(drought.Value, WeatherBandAlpha);
-
-        var badtide = TrySampleDominantColor(_icons.TryGet("weather.badtide"));
-        if (badtide.HasValue) _badtideColor = WithAlpha(badtide.Value, WeatherBandAlpha);
-    }
-
-    private static Color? TrySampleDominantColor(Sprite? sprite)
-    {
-        if (sprite == null) return null;
-        try
-        {
-            var src = sprite.texture;
-            if (src == null) return null;
-            var srcRect = sprite.textureRect;
-            int w = (int)srcRect.width, h = (int)srcRect.height;
-            if (w <= 0 || h <= 0) return null;
-
-            // Blit through a RenderTexture so we can read pixels regardless
-            // of whether the source texture has Read/Write Enabled. Game
-            // asset-bundle sprites are almost always non-readable, so this
-            // is the only reliable way to sample them at runtime.
-            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
-            var prev = RenderTexture.active;
-            try
-            {
-                Graphics.Blit(src, rt);
-                RenderTexture.active = rt;
-                var snap = new Texture2D(w, h, TextureFormat.RGBA32, false, linear: true);
-                snap.ReadPixels(new Rect(srcRect.x, src.height - srcRect.y - h, w, h), 0, 0);
-                snap.Apply();
-                var pixels = snap.GetPixels();
-                UnityEngine.Object.Destroy(snap);
-
-                // Pick the most-saturated pixel (weighted by alpha). Banners
-                // have lots of neutral / white content; a plain average
-                // washes out the signature hue, while picking the peak
-                // saturation gives the color the user actually notices.
-                Color best = Color.black;
-                float bestScore = -1f;
-                for (int i = 0; i < pixels.Length; i++)
-                {
-                    var p = pixels[i];
-                    if (p.a < 0.5f) continue;
-                    float hi = Mathf.Max(p.r, Mathf.Max(p.g, p.b));
-                    float lo = Mathf.Min(p.r, Mathf.Min(p.g, p.b));
-                    float chroma = hi - lo;
-                    float score = chroma * p.a * (hi + 0.2f); // favor bright, saturated
-                    if (score > bestScore) { bestScore = score; best = p; }
-                }
-                if (bestScore <= 0f) return null;
-                return new Color(best.r, best.g, best.b, 1f);
-            }
-            finally
-            {
-                RenderTexture.active = prev;
-                RenderTexture.ReleaseTemporary(rt);
-            }
-        }
-        catch
-        {
-            return null;
-        }
-    }
 
     /// Refreshes the vertical cursor line and tooltip panel for the current
     /// pointer position. Picks the nearest sample to the cursor's x and lists
@@ -574,8 +497,6 @@ public sealed class GraphsChart
         if (rect.width <= 0 || rect.height <= 0) return;
         var draw = DrawArea(rect);
 
-        EnsureWeatherColorsSampled();
-
         var history = _sampler.HistoryFor(_range.LookbackDays());
         if (history.Count == 0) return;
 
@@ -707,8 +628,8 @@ public sealed class GraphsChart
                 float x1 = rect.x + ((t1 - startT) / span) * rect.width;
                 var color = runWeather switch
                 {
-                    MetricHistory.WeatherDrought => _droughtColor,
-                    MetricHistory.WeatherBadtide => _badtideColor,
+                    MetricHistory.WeatherDrought => DroughtColor,
+                    MetricHistory.WeatherBadtide => BadtideColor,
                     _                            => default,
                 };
                 if (color.a > 0)
