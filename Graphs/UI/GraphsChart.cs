@@ -10,7 +10,7 @@ public sealed class GraphsChart
     // color of each in-game `weather-notification-{dry,badtide}` banner
     // (UnityPy extraction of resources.assets) so the chart's bands match
     // the colour the player already associates with each weather event.
-    private const float WeatherBandAlpha = 0.22f;
+    private const float WeatherBandAlpha = 0.55f;
     private const float WeatherBandRadius = 16f;
     private static readonly Color DroughtColor = WithAlpha(new(0.894f, 0.518f, 0.047f), WeatherBandAlpha);  // #e4840c
     private static readonly Color BadtideColor = WithAlpha(new(0.612f, 0.235f, 0.110f), WeatherBandAlpha);  // #9c3c1c

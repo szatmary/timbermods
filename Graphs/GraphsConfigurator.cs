@@ -32,5 +32,6 @@ public class GraphsConfigurator : Configurator
         Bind<GraphsChart>().AsSingleton();
         Bind<GraphsWindow>().AsSingleton();
         Bind<GraphsHotkey>().AsSingleton();
+        Bind<GraphsTopBarButton>().AsSingleton();
     }
 }
