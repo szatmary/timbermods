@@ -1,8 +1,7 @@
 # Graphs mod — internal API notes
 
-Source of truth for implementers. All names verified against Timberborn game DLLs via string-probe of
-`/Users/matthewszatmary/Library/Application Support/Steam/steamapps/common/Timberborn/Timberborn.app/Contents/Resources/Data/Managed/`.
-Raw probe dump: `/tmp/graphs-probe.txt`.
+Source of truth for implementers. Names verified against the Timberborn
+game DLLs in the Steam install's `Timberborn.app/.../Managed/` directory.
 
 Conventions below: `Namespace.TypeName.Member` when the namespace is load-bearing; otherwise just `Type.Member`.
 

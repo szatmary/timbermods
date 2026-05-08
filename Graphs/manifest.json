@@ -3,5 +3,5 @@
     "Version": "1.0.0",
     "Id": "Graphs",
     "MinimumGameVersion": "1.0.0.0",
-    "Description": "Shift+G opens a full-screen window with line graphs of all settlement metrics (goods, population, science, wellbeing) over time, with weather cycles as background bands."
+    "Description": "Adds a chart-icon button to the top-right toolbar (or press Shift+G) to open a window of line graphs for goods, population, science, employment, and wellbeing — sampled hourly, persisted across save/reload, with weather bands behind the lines."
 }

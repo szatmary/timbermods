@@ -62,9 +62,9 @@ public sealed class TieredMetricHistory
 
         _recent.Append(values, weather, timestamp);
 
-        // Accumulate into mid + old running sums. NaN values poison the
-        // bucket's average — a single NaN raw sample makes the bucket's
-        // averaged sample NaN, which the chart draws as a gap. Acceptable.
+        // Accumulate into mid + old running sums. A single NaN in a bucket
+        // poisons the average; the resulting NaN renders as a gap on the
+        // chart, which is the desired behavior.
         if (_midCount == 0) _midFirstTimestamp = timestamp;
         if (_oldCount == 0) _oldFirstTimestamp = timestamp;
         for (int i = 0; i < _metricCount; i++) _midSum[i] += values[i];

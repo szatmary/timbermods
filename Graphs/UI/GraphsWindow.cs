@@ -5,10 +5,8 @@ using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-/// Implements the game's canonical panel protocol (`IPanelController`) so
-/// that `PanelStack.PushDialog(this)` gives us the game's modal window
-/// shell — including backdrop, USS theme, Esc/Enter routing, and proper
-/// focus management. We never create our own UIDocument anymore.
+/// Implements `IPanelController` so the game's `PanelStack` provides our
+/// window shell — backdrop, USS theme, Esc/Enter routing, focus management.
 public sealed class GraphsWindow : IPanelController
 {
     private readonly PanelStack _panelStack;
@@ -54,10 +52,8 @@ public sealed class GraphsWindow : IPanelController
     public void Open()
     {
         if (_isShown) return;
-        // Push with the dim overlay but NOT lockSpeed — the game should keep
-        // ticking while the user watches the graph update live. The private
-        // Push overload is accessible because Timberborn.CoreUI is publicized
-        // for this mod.
+        // Dim overlay but lockSpeed=false: the world keeps ticking while
+        // the user watches the chart update live.
         _panelStack.Push(this, hideTop: false, showOverlay: true, isDialog: false, lockSpeed: false);
         _isShown = true;
 
@@ -97,9 +93,7 @@ public sealed class GraphsWindow : IPanelController
 
     private VisualElement Build()
     {
-        // Chrome uses NineSliceVisualElement with the game's .sliced-border
-        // classes — same pattern as Core/DialogBox.uxml. Gives us the nine-
-        // sliced wooden frame background that matches other in-game dialogs.
+        // Nine-sliced wooden frame — same chrome the game's own dialogs use.
         var panel = new NineSliceVisualElement { name = "graphs-panel" };
         panel.AddToClassList("sliced-border");
         panel.AddToClassList("sliced-border--nontransparent");
@@ -109,9 +103,8 @@ public sealed class GraphsWindow : IPanelController
         panel.style.maxHeight = 1200;
         panel.style.flexDirection = FlexDirection.Column;
 
-        // Inner content wrapper — the sliced-border sprite's visible frame
-        // takes up the outer ~20px; padding here insets our content so chart
-        // and legend don't sit under the frame.
+        // Inset content past the ~20px sliced-border frame so chart and
+        // legend don't sit under it.
         var contentMargin = new VisualElement { name = "graphs-content-margin" };
         contentMargin.AddToClassList("box__content-margin");
         contentMargin.style.paddingLeft = 20;
@@ -122,11 +115,8 @@ public sealed class GraphsWindow : IPanelController
         contentMargin.style.flexDirection = FlexDirection.Column;
         panel.Add(contentMargin);
 
-        // Title bar: range selector centered across the full width, close X
-        // pinned absolutely to the top-right so it doesn't shove the row
-        // off-center. Explicit flex-shrink 0 so the body row below can't
-        // push it off, and explicit height so legendSlot's dropdown (which
-        // has its own popup/arrow region) can't creep upward into it.
+        // Title bar holds the range selector centered. Fixed height keeps
+        // the legend dropdown (which spawns a popup) from creeping into it.
         var titleBar = new VisualElement { name = "graphs-title" };
         titleBar.style.flexDirection = FlexDirection.Row;
         titleBar.style.justifyContent = Justify.Center;
@@ -135,17 +125,24 @@ public sealed class GraphsWindow : IPanelController
         titleBar.style.flexShrink = 0;
         titleBar.style.marginBottom = 6;
 
-        titleBar.Add(_rangeSelector.Build());
+        // Range selector centered. Slight marginTop so it visually sits
+        // a hair below the close X.
+        var rangeRow = _rangeSelector.Build();
+        rangeRow.style.marginTop = 4;
+        titleBar.Add(rangeRow);
 
+        contentMargin.Add(titleBar);
+
+        // Close X anchored to the outer panel (not contentMargin) so it
+        // sits on the frame's corner, matching vanilla windows. The
+        // `.close-button` USS rule handles sprite, size, and hover.
         var closeBtn = new NineSliceButton();
         closeBtn.AddToClassList("close-button");
         closeBtn.clicked += Close;
         closeBtn.style.position = Position.Absolute;
-        closeBtn.style.right = 0;
-        closeBtn.style.top = 0;
-        titleBar.Add(closeBtn);
-
-        contentMargin.Add(titleBar);
+        closeBtn.style.top = 2;
+        closeBtn.style.right = 2;
+        panel.Add(closeBtn);
 
         var body = new VisualElement { name = "graphs-body" };
         body.style.flexGrow = 1;

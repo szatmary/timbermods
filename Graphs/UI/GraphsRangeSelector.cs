@@ -52,9 +52,8 @@ public sealed class GraphsRangeSelector
 
     private static void StyleButton(Button btn, bool selected)
     {
-        // Inline styles rather than USS classes — the game's .button-game
-        // rules don't reliably apply background/text here, and the title-bar
-        // context requires the buttons to paint themselves regardless.
+        // Inline styling — `.button-game` USS doesn't apply reliably to
+        // buttons hosted in the title-bar context.
         btn.style.minWidth = 96;
         btn.style.height = 28;
         btn.style.marginLeft = 2;

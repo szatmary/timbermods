@@ -5,10 +5,10 @@ using Timberborn.WeatherSystem;
 
 namespace Graphs.Metrics;
 
-/// Returns the current weather state for each sample. Uses
-/// `GameCycleService.CycleDay` vs `WeatherService.HazardousWeatherStartCycleDay`
-/// to tell whether the hazardous period of the cycle is active right now,
-/// so temperate days before a drought don't get tinted with the drought color.
+/// Returns the current weather state for each sample. The hazardous-cycle
+/// service tells us *which* hazard is scheduled this cycle; comparing
+/// CycleDay against HazardousWeatherStartCycleDay tells us whether it's
+/// currently active, so temperate days before a drought aren't tinted.
 public sealed class WeatherStateSampler
 {
     private readonly HazardousWeatherService _hazardous;

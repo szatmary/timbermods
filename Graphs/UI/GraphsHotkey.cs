@@ -4,11 +4,11 @@ using UnityEngine.InputSystem;
 
 namespace Graphs.UI;
 
-/// Polls for the Shift+G chord each tick and toggles the graphs window.
+/// Polls for Shift+G each tick and toggles the graphs window.
 /// Uses Unity's new Input System — Timberborn disables the legacy Input
 /// class in player settings, so `UnityEngine.Input.GetKey` throws at runtime.
-/// Esc handling is deliberately NOT here: once the window is pushed, the
-/// game's PanelStack routes Esc to our IPanelController.OnUICancelled().
+/// Esc handling lives on the panel: once pushed, PanelStack routes Esc to
+/// our IPanelController.OnUICancelled().
 public sealed class GraphsHotkey : ITickableSingleton
 {
     private readonly InputService _input;

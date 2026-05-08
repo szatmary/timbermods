@@ -11,13 +11,11 @@ using UnityEngine;
 
 namespace Graphs.Metrics;
 
-/// Samples every registered metric at a fixed cadence in in-game time.
-/// Rate: 24 samples per in-game day (one per in-game hour).
-///
+/// Samples every registered metric 24 times per in-game day (one per hour).
 /// Storage is per-district: each finished DistrictCenter (keyed by stable
-/// EntityId) plus a "global" settlement-wide entry get their own tiered
-/// history. The DistrictFilter selects which one the chart sees. When a
-/// district is destroyed, its history is pruned.
+/// EntityId) plus a settlement-wide "global" entry each have their own
+/// tiered history. The DistrictFilter selects which one the chart reads.
+/// Histories of destroyed districts are pruned.
 public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISaveableSingleton
 {
     public const int SamplesPerDay = 24;
@@ -92,8 +90,8 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         TakeSample(partialDay);
     }
 
-    /// Drop per-district histories whose district no longer exists. Keeps
-    /// the global key. Prevents unbounded growth of in-memory + saved data.
+    /// Drop histories whose district has been removed. Keeps the global
+    /// key. Prevents unbounded growth of saved data.
     [OnEvent]
     public void OnDistrictCenterRegistryChanged(DistrictCenterRegistryChangedEvent _)
     {
@@ -142,9 +140,9 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         for (int i = 0; i < metrics.Count; i++)
         {
             var def = metrics[i];
-            // ValueFn can transiently throw when a building is destroyed
-            // between samples. Log once per metric id then store NaN so
-            // the chart shows a gap rather than the whole sample failing.
+            // ValueFn can throw transiently (e.g. a building destroyed
+            // between samples). Store NaN so the chart shows a gap, and
+            // log once per metric id so the warning isn't spammy.
             try { _scratch![i] = def.ValueFn(district); }
             catch (Exception ex)
             {
@@ -235,7 +233,7 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         }
 
         Debug.Log(
-            $"[Graphs] V3 restore: {savedDistrictKeys.Count} district histories, " +
+            $"[Graphs] restore: {savedDistrictKeys.Count} district histories, " +
             $"{totalRestored} samples; latest timestamp {latestTimestamp:0.00}");
 
         if (latestTimestamp > float.NegativeInfinity)

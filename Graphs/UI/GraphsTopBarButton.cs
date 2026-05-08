@@ -1,67 +1,64 @@
-using System.Linq;
-using Timberborn.AssetSystem;
+using Timberborn.CoreUI;
 using Timberborn.SingletonSystem;
+using Timberborn.TooltipSystem;
 using Timberborn.UILayoutSystem;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-/// Adds a square-toggle-styled button to the top-right strip — sits next
-/// to the vanilla "show construction guidelines" / "stockpile overlay" /
-/// "natural resources" toggles. Click to open or close the Graphs window.
+/// Square-toggle in the top-right strip alongside vanilla's
+/// construction-guidelines / stockpile-overlay / natural-resources buttons.
+/// Reuses the vanilla `Common/SquareToggle` template for sizing, frame
+/// sprites, and hover behavior; the chart icon is painted on the toggle's
+/// checkmark element. Tooltip routes through the game's tooltip service.
 public sealed class GraphsTopBarButton : ILoadableSingleton
 {
     private readonly UILayout _uiLayout;
     private readonly GraphsWindow _window;
-    private readonly IAssetLoader _assets;
+    private readonly VisualElementLoader _loader;
+    private readonly ITooltipRegistrar _tooltipRegistrar;
 
-    public GraphsTopBarButton(UILayout uiLayout, GraphsWindow window, IAssetLoader assets)
+    // Warm tan that vanilla square-toggle icons paint in.
+    private static readonly Color IconTint = new(0.729f, 0.627f, 0.420f);  // #baa06b
+
+    // Held so Unity doesn't reap the runtime-generated texture/sprite once
+    // they're attached to the checkmark.
+    private Sprite? _iconSprite;
+
+    public GraphsTopBarButton(
+        UILayout uiLayout,
+        GraphsWindow window,
+        VisualElementLoader loader,
+        ITooltipRegistrar tooltipRegistrar)
     {
         _uiLayout = uiLayout;
         _window = window;
-        _assets = assets;
+        _loader = loader;
+        _tooltipRegistrar = tooltipRegistrar;
     }
 
     public void Load()
     {
-        var btn = new VisualElement { name = "graphs-top-right-button", pickingMode = PickingMode.Position };
-        btn.AddToClassList("square-toggle");
-        btn.style.width = 36;
-        btn.style.height = 36;
-        btn.style.marginLeft = 2;
-        btn.style.marginRight = 2;
-        btn.tooltip = "Graphs (Shift+G)";
+        var root = _loader.LoadVisualElement("Common/SquareToggle");
+        var toggle = root.Q<Toggle>("Toggle");
 
-        var baseSprite = LoadSprite("UI/Images/Game/square-toggle-base");
-        if (baseSprite != null)
-            btn.style.backgroundImage = new StyleBackground(baseSprite);
+        // Vanilla `.square-toggle--<name>` USS sets background-image on the
+        // checkmark descendant; we override inline with the procedural icon.
+        var checkmark = toggle.Q(className: "unity-toggle__checkmark");
+        if (checkmark != null)
+        {
+            _iconSprite = GraphIcon.Create();
+            checkmark.style.backgroundImage = new StyleBackground(_iconSprite);
+            checkmark.style.unityBackgroundImageTintColor = new StyleColor(IconTint);
+        }
 
-        // Foreground icon — overlay sprite that identifies the toggle.
-        // science-icon reads as "stats / chart" in the existing UI vocabulary.
-        var icon = new VisualElement { pickingMode = PickingMode.Ignore };
-        icon.style.position = Position.Absolute;
-        icon.style.left = 4;
-        icon.style.right = 4;
-        icon.style.top = 4;
-        icon.style.bottom = 4;
-        var iconSprite = LoadSprite("UI/Images/Game/science-icon");
-        if (iconSprite != null)
-            icon.style.backgroundImage = new StyleBackground(iconSprite);
-        btn.Add(icon);
+        _tooltipRegistrar.Register(root, "Graphs (Shift+G)");
 
-        btn.RegisterCallback<ClickEvent>(_ => _window.Toggle());
+        // The toggle's checked state is incidental — the window owns its
+        // own open/closed flag.
+        toggle.RegisterValueChangedCallback(_ => _window.Toggle());
 
-        // Order 2 places us alongside vanilla's top-right toggles. Low so we
-        // sit next to construction-guidelines / natural-resources etc., not
-        // pushed off-screen by a value the layout doesn't expect.
-        _uiLayout.AddTopRightButton(btn, 2);
-    }
-
-    private Sprite? LoadSprite(string path)
-    {
-        foreach (var loaded in _assets.LoadAll<Sprite>(path))
-            if (loaded.Asset != null) return loaded.Asset;
-        return null;
+        _uiLayout.AddTopRightButton(root, 2);
     }
 }

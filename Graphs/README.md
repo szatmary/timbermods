@@ -1,51 +1,76 @@
 # Graphs
 
-A Timberborn mod that shows a centered dialog with line graphs of
-settlement metrics over time. Toggle with **Shift+G**. Close with Esc or
-the X button.
+A Timberborn mod that adds a window of line graphs over your settlement's
+history — goods, population, science, wellbeing, employment — on a shared
+time axis with weather bands behind the lines.
+
+## Opening the window
+
+Two entry points:
+
+- The chart-icon button in the **top-right toggle strip** (next to
+  Construction Guidelines / Stockpile Overlay / Natural Resources).
+- The **Shift+G** hotkey.
+
+Close with Esc or the X button.
 
 ## What it tracks
 
 - **Goods** — every registered good in the save (including modded ones).
-  Totals come from the game's `ResourceCountingService` so they match the
-  top-bar numbers exactly. Grouped by the game's own good groups (Food,
-  Ingredients, Logs, Water, etc.); Water and Badwater share a group.
+  Totals come from the game's `ResourceCountingService`, so they match
+  the top-bar numbers exactly. Grouped by the game's own good groups
+  (Food, Ingredients, Logs, Water, etc.); Water and Badwater share a
+  group.
 - **Science** — current science points.
-- **Population** — total beavers, adults, kits, plus housing stats
-  (homeless, occupied beds, free beds) and contaminated count.
-- **Bots** — bot count (own legend section, plots on the Population
-  y-scale so beaver/bot numbers are directly comparable).
-- **Employment** — unemployed beavers/bots, filled jobs, vacancies.
-- **Wellbeing** — average wellbeing, average hunger/thirst satisfaction.
+- **Population** — total beavers, adults, kits, plus bots, housing stats
+  (homeless, occupied/free beds), and contamination/infection counts.
+- **Employment** — beaver and bot jobs filled, unemployed, vacancies.
+- **Wellbeing** — average wellbeing, plus hunger and thirst (plotted as
+  unmet need, so a rising line means worsening conditions).
 
 ## Chart behaviour
 
-- **0 pinned to the chart bottom** per scale-group. If Logs is 200 and
-  Planks is 100, Planks sits at half height, not at the floor.
-- **Shared y-scale per scale-group** so lines in the same group compare
-  directly.
-- **Weather bands** behind the lines: amber tint for drought, pink for
-  badtide (matching the game's theming). Only drawn during the hazardous
-  phase of a cycle, not the temperate lead-in.
-- **Range selector** at the bottom: 5 days / 30 days / All.
+- **Per-scale-group y-axis** — metrics that share a `ScaleGroup` share an
+  axis so their lines compare directly. Goods ride one scale, beaver
+  counts another, 0..1 satisfaction values their own.
+- **Soft bounds** — declared `FixedMin` / `FixedMax` anchor an axis at
+  natural endpoints, but observed samples outside that range expand it.
+  Real data is never clipped.
+- **Weather bands** behind the lines: a warm gold tint during drought,
+  deep burgundy during badtide. Both colors come from the game's own
+  weather progress-bar pills. Only drawn during the hazardous phase of
+  a cycle, not the temperate lead-in.
+- **Hover tooltip** — a vertical cursor line plus a panel listing every
+  visible metric's value at the cursor's nearest sample.
+- **Range selector** in the title bar: 10, 100, 1000, or 10 000 days.
 - **District filter** dropdown above the legend. "All districts"
-  aggregates; picking one narrows every per-district metric.
+  aggregates settlement-wide; picking one narrows every per-district
+  metric.
 
-## Sampling
+## Sampling and history
 
-One sample every 6 in-game minutes (240/day, ~200 in-game days of
-history in a 48 000-sample ring buffer). The sampler runs continuously
-once the game is loaded; opening and closing the window is free. No
-per-frame redraws — the chart repaints only when a new sample arrives,
-a checkbox flips, the district changes, or the range changes.
+Samples are taken 24 times per in-game day (one per in-game hour). Each
+finished district plus a settlement-wide "global" entry has its own
+three-tier history:
+
+| Tier   | Resolution | Capacity                |
+|--------|------------|-------------------------|
+| Recent | 24 / day   | 100 days  (2 400 samples) |
+| Mid    | 4 / day    | 1 000 days (4 000 samples) |
+| Old    | 1 / day    | 10 000 days (10 000 samples) |
+
+Coarser tiers store running averages so an Old-tier sample summarizes a
+full day of activity. The chart picks the finest tier that still covers
+the requested lookback. Histories of removed districts are pruned.
+
+The chart only repaints when a sample lands, a metric is toggled, the
+district changes, or the range changes — no per-frame work.
 
 ## Persistence
 
-The set of metrics you have checked is saved to `PlayerPrefs` and
-restored on the next launch.
-
-_History_ (the sample buffer itself) is in-memory only and resets on
-save reload — deliberately in phase 1.
+The set of checked metrics is stored in `PlayerPrefs` and restored on
+launch. The sample history itself is saved with the game save, so
+graphs survive save/reload across all three tiers.
 
 ## Defaults
 
@@ -68,13 +93,3 @@ The build script sets `DOTNET_ROOT` and deploys the mod to
 - Timberborn 1.0.0.0 or later
 - macOS (Apple Silicon) uses the bundled `AppleSiliconHarmony` shim
   alongside Harmony 2.4.2.
-
-## Phase 2 (not yet implemented)
-
-- Persist sample history across save/load.
-- Tooltip showing exact values at the cursor position.
-- Rebindable hotkey via the game's `KeyBindingSystem`.
-- Native-UI styling for scrollbar / dropdown / checkbox / close-X
-  (currently plain UIToolkit; blocked on USS selector extraction).
-- Re-enable the Statistics category (beavers exploded, chipped teeth,
-  trees cut, etc.) once we can persist counters across save/load.

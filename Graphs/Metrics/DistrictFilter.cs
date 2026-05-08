@@ -6,13 +6,9 @@ using Timberborn.SingletonSystem;
 
 namespace Graphs.Metrics;
 
-/// Shared mutable state: which district the user has selected in the legend.
-/// `null` means "all districts" (settlement-wide aggregation).
-///
-/// The filter holds a `DistrictCenter` reference rather than a name string so
-/// renaming a district doesn't break the filter — providers always see the
-/// district's *current* name. Deletion of the held district drops the filter
-/// back to "all districts".
+/// Shared mutable state: the district selected in the legend. `null` means
+/// "all districts" (settlement-wide aggregation). Holds a `DistrictCenter`
+/// reference rather than a name so renames don't break the filter.
 public sealed class DistrictFilter : ILoadableSingleton
 {
     private readonly DistrictCenterRegistry _registry;
@@ -56,9 +52,7 @@ public sealed class DistrictFilter : ILoadableSingleton
         Changed?.Invoke();
     }
 
-    /// Re-validate when the registry mutates — if our held district was
-    /// removed, fall back to "all districts" so the filter stops asking
-    /// providers about a phantom district.
+    /// If the held district has been removed, fall back to "all districts".
     [OnEvent]
     public void OnDistrictCenterRegistryChanged(DistrictCenterRegistryChangedEvent _)
     {

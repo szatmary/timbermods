@@ -6,7 +6,6 @@ public enum MetricCategory
     Goods,
     Science,
     Population,
-    Bots,
     Employment,
     Wellbeing,
 }

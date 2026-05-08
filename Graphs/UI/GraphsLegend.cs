@@ -165,7 +165,7 @@ public sealed class GraphsLegend
                 var goodId = def.Id.Substring("good.".Length);
                 groupId = _goodService.GetGood(goodId)?.GoodGroupId;
 
-                // Merge water-family goods so Water and Badwater sit together.
+                // Group Water + Badwater together.
                 if (goodId == "Water" || goodId == "Badwater")
                     groupId = "Water";
             }
@@ -208,8 +208,7 @@ public sealed class GraphsLegend
 
     private static string PrettifyGroupId(string groupId)
     {
-        // Group ids are typically CamelCase ids like "Food" or "Ingredients" —
-        // show them uppercased with spaces inserted before interior capitals.
+        // CamelCase → uppercased with spaces before interior capitals.
         if (string.IsNullOrEmpty(groupId)) return groupId;
         var sb = new System.Text.StringBuilder();
         for (int i = 0; i < groupId.Length; i++)
@@ -231,12 +230,9 @@ public sealed class GraphsLegend
         row.style.marginLeft = 6;
 
         string displayName = ResolveDisplayName(def, out Sprite? icon);
-        // Fall back to the shared icon resolver so wellbeing/need rows pick up
-        // the same Berries/Water/ico-beavers sprites the chart gutter uses.
         if (icon == null) icon = ResolveIcon(def);
 
-        // Icon on the far left — either the game's good-icon sprite (goods)
-        // or a 20x20 swatch slot (other metrics) so rows align vertically.
+        // Icon (or a same-sized spacer) on the far left so rows align.
         if (icon != null)
         {
             var img = new Image { sprite = icon };
@@ -254,18 +250,17 @@ public sealed class GraphsLegend
             row.Add(spacer);
         }
 
-        // Color swatch for the line.
         var swatch = new VisualElement();
         swatch.style.width = 10; swatch.style.height = 10;
         swatch.style.marginRight = 6;
         swatch.style.backgroundColor = new StyleColor(GraphColors.ColorFor(def.Id, def.Category));
         row.Add(swatch);
 
-        // LocalizableToggle + .game-toggle class triggers the game's USS
-        // rules that pull the native checkmark sprite (UI/Images/Buttons/
-        // checkmark-*). _textLocKey must be set before VisualElementInitializer
-        // runs or the localizer throws; the inline label is cleared post-init
-        // because the metric name lives in a sibling Label.
+        // LocalizableToggle + .game-toggle class pulls the native
+        // checkmark sprite via the game's USS. _textLocKey must be set
+        // before VisualElementInitializer runs (the localizer throws
+        // otherwise); we then clear the inline label since the metric
+        // name lives in a sibling Label.
         var toggle = new LocalizableToggle { value = VisibleMetricIds.Contains(def.Id) };
         toggle._textLocKey = "Graphs.Empty";
         toggle.AddToClassList("game-toggle");
@@ -285,12 +280,11 @@ public sealed class GraphsLegend
         name.style.fontSize = 12;
         row.Add(name);
 
-        // Clicking the row text (or anywhere on the row outside the toggle
-        // itself) flips the toggle — easier target than the small checkbox.
+        // Clicking anywhere on the row flips the toggle — bigger hit target
+        // than the checkbox itself. Skip when the click already landed on
+        // the toggle so we don't double-toggle.
         row.RegisterCallback<ClickEvent>(evt =>
         {
-            // Don't double-toggle when the user clicks directly on the
-            // toggle's own hit area.
             if (evt.target is VisualElement ve && IsDescendantOf(ve, toggle)) return;
             toggle.value = !toggle.value;
         });
@@ -305,25 +299,23 @@ public sealed class GraphsLegend
         return false;
     }
 
-    /// For goods, return the game's localized DisplayName and grab the icon.
-    /// For other metrics, use the loc service to translate NameLocKey; if that
-    /// returns the key itself (no translation loaded), strip the dotted prefix
-    /// so rows read "Total" / "Adults" instead of "Graphs.Metric.Total".
-    /// Public so the chart tooltip can share the same resolution logic.
+    /// Goods: return the localized DisplayName and grab the icon.
+    /// Other metrics: translate NameLocKey via the loc service. If the loc
+    /// service returns the key unchanged (no translation), strip the dotted
+    /// prefix so rows read "Total" instead of "Graphs.Metric.Total".
+    /// Shared with the chart tooltip.
     public string ResolveDisplayName(MetricDefinition def)
     {
         return ResolveDisplayName(def, out _);
     }
 
-    /// Public so the chart can label its line-end positions with the
-    /// same icons the legend rows use.
+    /// Shared with the chart so line-end markers use the same icon as the
+    /// legend row. Falls back to thematic good icons for need-based metrics
+    /// that don't have their own sprite.
     public Sprite? ResolveIcon(MetricDefinition def)
     {
         ResolveDisplayName(def, out var icon);
         if (icon != null) return icon;
-        // Thematic fallbacks for metrics without their own sprite: reuse
-        // a good icon that represents the underlying need, or an existing
-        // beaver sprite for aggregate wellbeing.
         if (def.Id == "need.hunger.avg") return TryGoodIcon("Berries");
         if (def.Id == "need.thirst.avg") return TryGoodIcon("Water");
         if (def.Id == "wellbeing.avg")   return _icons.TryGet("pop.total"); // ico-beavers
@@ -363,9 +355,8 @@ public sealed class GraphsLegend
         return TitleCase(raw);
     }
 
-    /// Uppercase the first letter of every word so labels always read
-    /// "Treated Planks" / "Iron Teeth" regardless of how the underlying
-    /// source stored them (game strings sometimes come through lowercase).
+    /// Uppercase the first letter of every word so labels read
+    /// "Treated Planks" / "Iron Teeth" regardless of source casing.
     private static string TitleCase(string s)
     {
         if (string.IsNullOrEmpty(s)) return s;

@@ -9,11 +9,10 @@ using UnityEngine.UIElements;
 
 namespace Graphs.UI;
 
-/// Builds the district dropdown using the game's native `Dropdown` widget.
-/// `DropdownInitializer` (registered as an IVisualElementInitializer) wires
-/// the dropdown up when VisualElementInitializer walks our tree; we then call
-/// `DropdownItemsSetter.SetItems` to populate it from a live provider so
-/// renames / adds / removes show up.
+/// District dropdown using the game's native `Dropdown` widget. The
+/// game's DropdownInitializer wires it up when VisualElementInitializer
+/// walks our tree; we then populate items via DropdownItemsSetter against
+/// a live provider so renames / adds / removes show up.
 public sealed class GraphsDistrictSelector : ILoadableSingleton
 {
     public const string AllDistrictsLabel = "All districts";
@@ -49,9 +48,8 @@ public sealed class GraphsDistrictSelector : ILoadableSingleton
         _dropdown = new Dropdown();
         _dropdown.style.marginBottom = 8;
 
-        // Items are set after VisualElementInitializer runs — at which point
-        // DropdownInitializer has called Initialize(DropdownListDrawer) on
-        // our instance and the inner buttons exist.
+        // Set items only after VisualElementInitializer has wired the
+        // dropdown's inner buttons through DropdownInitializer.
         _dropdown.RegisterCallback<AttachToPanelEvent>(_ =>
         {
             if (_dropdown != null && _provider != null)
@@ -61,9 +59,9 @@ public sealed class GraphsDistrictSelector : ILoadableSingleton
         return _dropdown;
     }
 
-    /// Refresh dropdown items when districts come or go. (Renames don't fire
-    /// this event but the provider's Items list is computed live, so the
-    /// next time the dropdown is opened it'll show current names.)
+    /// Refresh dropdown items when districts are added or removed. Renames
+    /// don't fire this event, but the provider's Items list is computed
+    /// live so the next dropdown open will show current names.
     [OnEvent]
     public void OnDistrictCenterRegistryChanged(DistrictCenterRegistryChangedEvent _)
     {
@@ -72,9 +70,8 @@ public sealed class GraphsDistrictSelector : ILoadableSingleton
     }
 }
 
-/// Live IDropdownProvider — `Items` is a computed property so renames / adds
-/// / removes are picked up at every query. Maps the "All districts" UI
-/// sentinel to the DistrictFilter's null value.
+/// Live IDropdownProvider — `Items` recomputes on every query, so renames
+/// surface immediately. The "All districts" UI label maps to a null filter.
 internal sealed class DistrictDropdownProvider : IDropdownProvider
 {
     private readonly DistrictCenterRegistry _registry;

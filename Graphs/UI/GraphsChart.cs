@@ -6,14 +6,12 @@ namespace Graphs.UI;
 
 public sealed class GraphsChart
 {
-    // Background tints for weather bands. Picked from the dominant opaque
-    // color of each in-game `weather-notification-{dry,badtide}` banner
-    // (UnityPy extraction of resources.assets) so the chart's bands match
-    // the colour the player already associates with each weather event.
+    // Weather-band tints, semi-transparent so the wooden panel grain reads
+    // through. Hues match the in-game `weather-progress-{dry,badtide}` pills.
     private const float WeatherBandAlpha = 0.55f;
     private const float WeatherBandRadius = 16f;
-    private static readonly Color DroughtColor = WithAlpha(new(0.894f, 0.518f, 0.047f), WeatherBandAlpha);  // #e4840c
-    private static readonly Color BadtideColor = WithAlpha(new(0.612f, 0.235f, 0.110f), WeatherBandAlpha);  // #9c3c1c
+    private static readonly Color DroughtColor = WithAlpha(new(1.000f, 0.608f, 0.122f), WeatherBandAlpha);  // #ff9b1f
+    private static readonly Color BadtideColor = WithAlpha(new(0.470f, 0.059f, 0.000f), WeatherBandAlpha);  // #780f00
 
     private static Color WithAlpha(Color c, float a) => new(c.r, c.g, c.b, a);
 
@@ -46,9 +44,8 @@ public sealed class GraphsChart
     private const float MarkerHeight = EndIconSize + EndLabelHeight;
     private const float GutterWidth = EndIconSize + 6f; // icon + padding
     // Pool of gutter icons + value labels. Grows as needed; unused entries
-    // get display:None. Reusing elements (rather than re-creating them per
-    // render) avoids GC churn — but we re-set every relevant style on each
-    // use so no stale state can prevent a re-enabled metric from rendering.
+    // are display:None. Every relevant style is reset on each use so a
+    // re-enabled metric doesn't pick up the previous holder's state.
     private readonly System.Collections.Generic.List<Image> _endIconPool = new();
     private readonly System.Collections.Generic.List<Label> _endLabelPool = new();
 
@@ -70,16 +67,11 @@ public sealed class GraphsChart
     {
         _element = new VisualElement { name = "graphs-chart" };
         _element.style.flexGrow = 1;
-        // Opaque dark backdrop — bands are alpha-blended and the wooden
-        // panel underneath has enough green tint to muddy the colors at
-        // 55% alpha. Painting our own substrate gives the bands a known
-        // dark canvas to read against.
-        _element.style.backgroundColor = new StyleColor(new Color(0.10f, 0.09f, 0.08f, 1f));
         _element.generateVisualContent += Draw;
 
-        // Subscribe once per chart lifetime, not per-Build. GraphsWindow may
-        // call Build again on each Open; subscribing there would leak the
-        // old element through the singleton's delegate list.
+        // Subscribe once per chart lifetime — Build may be called on each
+        // window Open, and subscribing there would leak the prior element
+        // through the singleton's delegate list.
         if (!_subscribed)
         {
             _range.Changed += Repaint;
@@ -143,9 +135,9 @@ public sealed class GraphsChart
         if (_cursorInside) RefreshTooltip();
     }
 
-    /// For every visible metric with a last-sample position, place its icon
-    /// at the right edge of the chart at the line's final y. Hides icons of
-    /// metrics that aren't visible (or don't have an icon).
+    /// Places a gutter icon at the right edge of the chart for every
+    /// visible metric, anchored to its line's final y. Resolves overlap by
+    /// stacking conflicting markers vertically.
     private void UpdateEndIcons()
     {
         if (_element is null) return;
@@ -158,9 +150,8 @@ public sealed class GraphsChart
         if (history.Count == 0) { HideAllEndPool(); return; }
 
         float latestT = history.ReadTimestamp(history.Count - 1);
-        // Always use the full selected lookback window — don't clamp to the
-        // earliest sample. If we have less data than the window, the real
-        // samples will appear on the right side and the left will be empty.
+        // Use the full selected lookback. If history doesn't fill the
+        // window, real samples appear on the right and the left stays empty.
         float startT = latestT - _range.LookbackDays();
         int startIdx = history.FindFirstAtOrAfter(startT);
         int endIdx = history.Count;
@@ -174,9 +165,8 @@ public sealed class GraphsChart
         float innerBottom = draw.y + draw.height;
         float innerHeight = innerBottom - innerTop;
 
-        // Gather candidates with their preferred y anchored to the line end.
-        // Sprite may be null for metrics without a native icon — those render
-        // as a filled colored block in the gutter instead.
+        // Sprite may be null for metrics without a native icon — those
+        // render as a filled colored block in the gutter instead.
         var candidates = new System.Collections.Generic.List<(MetricDefinition Def, float Y, Sprite? Sprite)>();
         int last = endIdx - 1;
 
@@ -186,10 +176,10 @@ public sealed class GraphsChart
             if (!_legend.VisibleMetricIds.Contains(def.Id)) continue;
             if (!ranges.TryGetValue(def.ScaleGroup, out var range)) continue;
 
-            // On coarser tiers, the very-latest sample is a bucket average
-            // and can be NaN if any hour in the bucket failed. Walk back to
-            // the most-recent non-NaN sample within the window so the marker
-            // still anchors to real data instead of being dropped.
+            // On coarser tiers, the latest sample is a bucket average and
+            // can be NaN if any hour in the bucket failed. Walk back to the
+            // most-recent non-NaN value so the marker still anchors to real
+            // data.
             float v = LatestNonNaN(history, m, startIdx, last);
             if (float.IsNaN(v)) continue;
 
@@ -201,8 +191,8 @@ public sealed class GraphsChart
 
         // Forward pass anchors at minY and pushes each marker below the
         // previous; backward pass clamps the last at maxY and pulls earlier
-        // ones up to clear the next. When [minY,maxY] can't fit them all,
-        // late markers overlap the earlier ones (acceptable for v1).
+        // ones up to clear the next. If [minY,maxY] can't fit them all,
+        // late markers overlap earlier ones.
         candidates.Sort((a, b) => a.Y.CompareTo(b.Y));
         float gutterX = rect.xMax - GutterWidth + 3;
 
@@ -222,8 +212,8 @@ public sealed class GraphsChart
             if (ys[i] > upper) ys[i] = upper;
         }
 
-        // Grow the pools to cover all candidates. New entries get one-time
-        // style setup that doesn't change between renders.
+        // Grow the pools to cover all candidates. One-time style setup on
+        // new entries; per-use mutations come below.
         while (_endIconPool.Count < candidates.Count)
         {
             var img = new Image { pickingMode = PickingMode.Ignore };
@@ -254,9 +244,8 @@ public sealed class GraphsChart
             var img = _endIconPool[iIdx];
             img.style.left = gutterX;
             img.style.top = centerY - EndIconSize / 2f;
-            // Always reset BOTH sprite and backgroundColor so a previous
-            // render's state can't bleed through when this slot is reused
-            // for a different metric (or after a visibility toggle).
+            // Reset BOTH sprite and backgroundColor — the slot may be reused
+            // for a different metric or after a visibility toggle.
             if (c.Sprite == null)
             {
                 img.sprite = null;
@@ -267,8 +256,8 @@ public sealed class GraphsChart
             {
                 img.sprite = c.Sprite;
                 img.style.backgroundColor = new StyleColor(Color.clear);
-                // Wellbeing-category icons get a category tint (warm gold)
-                // across wellbeing / hunger / thirst so they read as a group.
+                // Wellbeing / hunger / thirst share a warm-gold tint so
+                // they read as a group.
                 img.tintColor = c.Def.Category == MetricCategory.Wellbeing
                     ? GraphColors.WellbeingTint
                     : Color.white;
@@ -295,10 +284,9 @@ public sealed class GraphsChart
             _endLabelPool[i].style.display = DisplayStyle.None;
     }
 
-    /// Walks backward from `endIdx` through `startIdx` and returns the
-    /// first non-NaN value for the given metric, or NaN if the entire
-    /// window is NaN for it. Used so a single NaN-poisoned bucket on
-    /// Mid/Old doesn't drop the metric from the gutter.
+    /// Walks backward through the window and returns the first non-NaN
+    /// value, or NaN if every sample for the metric is NaN. Used so a
+    /// single NaN-poisoned bucket on Mid/Old doesn't drop the gutter marker.
     private static float LatestNonNaN(MetricHistory history, int metricIdx, int startIdx, int endIdx)
     {
         for (int i = endIdx; i >= startIdx; i--)
@@ -318,9 +306,9 @@ public sealed class GraphsChart
     }
 
 
-    /// Refreshes the vertical cursor line and tooltip panel for the current
-    /// pointer position. Picks the nearest sample to the cursor's x and lists
-    /// the visible metrics' values at that sample.
+    /// Repositions the cursor line + tooltip for the current pointer
+    /// position. Picks the nearest sample to the cursor's x and lists every
+    /// visible metric's value at that sample.
     private void RefreshTooltip()
     {
         if (_element is null || _cursorLine is null || _tooltipBox is null || _tooltipHeader is null) return;
@@ -347,8 +335,8 @@ public sealed class GraphsChart
         float span = latestT - startT;
         if (span <= 0) { HideTooltip(); return; }
 
-        // Map cursor x back to a timestamp — clamped within the drawing area,
-        // so cursor positions over the gutter resolve to the most recent sample.
+        // Map cursor x back to a timestamp, clamped to the drawing area
+        // so cursor positions over the gutter snap to the latest sample.
         float fx = Mathf.Clamp01((_cursorLocal.x - draw.x) / draw.width);
         float targetT = startT + fx * span;
         int nearest = startIdx;
@@ -365,17 +353,15 @@ public sealed class GraphsChart
         _cursorLine.style.display = DisplayStyle.Flex;
         _cursorLine.style.left = sampleX;
 
-        // Header reads "Day D:HH" — D is the in-game day, HH is the hour
-        // within that day (0..23). Compute total hours since game start
-        // with rounding so fp drift doesn't push hour 0 of next day back
-        // to hour 23 of the current day.
+        // "Day D:HH" — round to nearest hour so fp drift doesn't slide
+        // hour 0 of day N+1 back to hour 23 of day N.
         int totalHours = Mathf.RoundToInt(sampleT * 24f);
         int day = totalHours / 24;
         int hour = totalHours % 24;
         _tooltipHeader.text = $"Day {day}:{hour:00}";
 
-        // Rebuild the metric rows. RemoveFromHierarchy is safe even if the
-        // row somehow lost its parent (Remove() throws when it's not a child).
+        // RemoveFromHierarchy is safe if the row already lost its parent;
+        // Remove() throws on non-children.
         foreach (var lbl in _tooltipRows) lbl.RemoveFromHierarchy();
         _tooltipRows.Clear();
 
@@ -395,8 +381,7 @@ public sealed class GraphsChart
 
         _tooltipBox.style.display = DisplayStyle.Flex;
 
-        // Position the tooltip to the right of the cursor when possible;
-        // flip left when near the right edge.
+        // Tooltip sits right of the cursor, flipping left near the edge.
         const float offset = 10f;
         const float tooltipWidth = 200f;
         float tooltipX = sampleX + offset;
@@ -421,12 +406,11 @@ public sealed class GraphsChart
     }
 
     /// Computes a per-ScaleGroup y-axis range for the visible window.
-    /// Bounds are **soft**: a metric's `FixedMin` / `FixedMax` anchor the
-    /// axis at known natural bounds, but the chart still expands if the
-    /// data goes outside them. Floor defaults to 0 so positive-only metrics
-    /// don't lift off the baseline; it drops as needed when a metric goes
-    /// negative or declares a lower bound. Groups with no visible metric
-    /// are omitted.
+    /// Bounds are soft: a metric's `FixedMin` / `FixedMax` anchor the axis
+    /// at natural endpoints, but observed samples outside that range expand
+    /// it — real data is never clipped. Floor defaults to 0 and drops below
+    /// when a metric goes negative or declares a lower bound. Groups with
+    /// no visible metric are omitted.
     private Dictionary<string, ScaleRange> ComputeScaleRanges(
         MetricHistory history, int startIdx, int endIdx)
     {
@@ -474,8 +458,6 @@ public sealed class GraphsChart
         var ranges = new Dictionary<string, ScaleRange>(StringComparer.Ordinal);
         foreach (var kv in observedMax)
         {
-            // Soft bounds: declared values anchor the axis, but observed
-            // data outside them wins — the chart never clips real samples.
             float max = kv.Value;
             if (declaredMax.TryGetValue(kv.Key, out var declMax) && declMax > max) max = declMax;
             float min = observedMin[kv.Key];
@@ -534,21 +516,16 @@ public sealed class GraphsChart
         int sampleCount = endIdx - startIdx;
         if (sampleCount < 1) return;
 
-        // Per-ScaleGroup range. Floor is 0 unless a metric goes negative
-        // (wellbeing can dip below zero for miserable beavers). Ceiling is
-        // the observed max or a metric-declared FixedMax (so 0..1
-        // satisfaction lines don't stretch to fill the chart when tiny).
         var ranges = ComputeScaleRanges(history, startIdx, endIdx);
         var metrics = _registry.Metrics;
 
-        // Top gets a small inset so a value at catMax isn't clipped.
-        // Bottom stays flush so y=0 always sits at the real chart bottom.
+        // Top inset so a value at catMax isn't clipped; bottom flush so
+        // y=0 always sits at the real chart bottom.
         const float topInset = 6f;
         float innerTop = rect.y + topInset;
         float innerBottom = rect.y + rect.height;
         float innerHeight = innerBottom - innerTop;
 
-        // Pass 2: draw each visible metric using its group's range.
         for (int m = 0; m < metrics.Count; m++)
         {
             var def = metrics[m];
@@ -565,10 +542,6 @@ public sealed class GraphsChart
                 if (float.IsNaN(v)) { havePrev = false; continue; }
                 float t = history.ReadTimestamp(i);
                 float x = rect.x + ((t - startT) / span) * rect.width;
-                // The group's min anchors to the bottom of the chart; its
-                // max to the top. Min defaults to 0 but drops below 0 when
-                // wellbeing / other metrics go negative, so a negative line
-                // plots below the zero baseline instead of running off-chart.
                 float norm = range.Span > 0 ? (v - range.Min) / range.Span : 0f;
                 float y = innerBottom - norm * innerHeight;
 
@@ -582,7 +555,7 @@ public sealed class GraphsChart
     }
 
     /// Draws a line segment as a chain of overlapping axis-aligned stamps.
-    /// Rotated-quad meshes rendered unreliably under Timberborn's UIToolkit
+    /// Rotated-quad meshes render unreliably under Timberborn's UIToolkit
     /// pipeline; axis-aligned FillRect always paints.
     private static void DrawSegment(
         MeshGenerationContext ctx, Vector2 a, Vector2 b, Color color, float thickness)
@@ -643,9 +616,8 @@ public sealed class GraphsChart
         }
     }
 
-    /// Axis-aligned rounded rectangle. Constructed as three axis-aligned
-    /// quads (center + top strip + bottom strip) plus four quarter-circle
-    /// triangle fans for the corners.
+    /// Axis-aligned rounded rectangle: three rectangle fills (center plus
+    /// top/bottom strips inset by radius) and four quarter-circle fans.
     private static void FillRoundedRect(
         MeshGenerationContext ctx, Rect rect, float radius, Color color)
     {
@@ -658,17 +630,12 @@ public sealed class GraphsChart
             return;
         }
 
-        // Full-width center strip (covers everything except the top and
-        // bottom `radius` slabs, which need to accommodate the corner arcs).
         FillRect(ctx, new Rect(rect.x, rect.y + radius, rect.width, rect.height - 2 * radius), color);
-        // Top + bottom strips, inset horizontally by radius so the corners
-        // can round inward.
         FillRect(ctx, new Rect(rect.x + radius, rect.y, rect.width - 2 * radius, radius), color);
         FillRect(ctx, new Rect(rect.x + radius, rect.yMax - radius, rect.width - 2 * radius, radius), color);
 
-        // Corner fans. y-axis is inverted in UIToolkit (y grows downward),
-        // but standard sin/cos still works — we just read "top" as the
-        // lower-y side and "bottom" as the higher-y side.
+        // y grows downward in UIToolkit, but standard sin/cos still works —
+        // "top" reads as the lower-y side.
         FillCornerFan(ctx, new Vector2(rect.x + radius,     rect.y + radius),     radius, 180f, 270f, color); // top-left
         FillCornerFan(ctx, new Vector2(rect.xMax - radius,  rect.y + radius),     radius, 270f, 360f, color); // top-right
         FillCornerFan(ctx, new Vector2(rect.xMax - radius,  rect.yMax - radius),  radius,   0f,  90f, color); // bottom-right
