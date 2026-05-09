@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Timberborn.ScienceSystem;
 
-namespace Graphs.Metrics.Providers;
+namespace LogBook.Metrics.Providers;
 
 public sealed class ScienceMetricProvider : IMetricProvider
 {
@@ -16,7 +16,7 @@ public sealed class ScienceMetricProvider : IMetricProvider
     {
         yield return new MetricDefinition(
             id: "science.stored",
-            nameLocKey: "Graphs.Metric.ScienceStored",
+            nameLocKey: "LogBook.Metric.ScienceStored",
             category: MetricCategory.Science,
             scope: MetricScope.Settlement,
             valueFn: _ => _scienceService.SciencePoints);

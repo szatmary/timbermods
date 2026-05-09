@@ -3,7 +3,7 @@ using Timberborn.BeaverContaminationSystem;
 using Timberborn.GameDistricts;
 using Timberborn.Population;
 
-namespace Graphs.Metrics.Providers;
+namespace LogBook.Metrics.Providers;
 
 /// Population head counts, housing/employment shortfalls, and contamination
 /// counters. Settlement-wide values come from `PopulationService.GlobalPopulationData`
@@ -30,44 +30,44 @@ public sealed class PopulationMetricProvider : IMetricProvider
     public IEnumerable<MetricDefinition> GetMetrics()
     {
         // Totals
-        yield return FromData("pop.total",  "Graphs.Metric.Total",  d => d.TotalPopulation, "Population");
-        yield return FromData("pop.adults", "Graphs.Metric.Adults", d => d.NumberOfAdults,   "Population");
-        yield return FromData("pop.kits",   "Graphs.Metric.Kits",   d => d.NumberOfChildren, "Population");
-        yield return FromData("pop.bots",   "Graphs.Metric.Bots",   d => d.NumberOfBots,     "Population");
+        yield return FromData("pop.total",  "LogBook.Metric.Total",  d => d.TotalPopulation, "Population");
+        yield return FromData("pop.adults", "LogBook.Metric.Adults", d => d.NumberOfAdults,   "Population");
+        yield return FromData("pop.kits",   "LogBook.Metric.Kits",   d => d.NumberOfChildren, "Population");
+        yield return FromData("pop.bots",   "LogBook.Metric.Bots",   d => d.NumberOfBots,     "Population");
 
         // Quarters (beds)
-        yield return FromData("pop.homeless",      "Graphs.Metric.Homeless",     d => d.BedData.Homeless,     "Quarters");
-        yield return FromData("pop.beds.occupied", "Graphs.Metric.OccupiedBeds", d => d.BedData.OccupiedBeds, "Quarters");
-        yield return FromData("pop.beds.free",     "Graphs.Metric.FreeBeds",     d => d.BedData.FreeBeds,     "Quarters");
+        yield return FromData("pop.homeless",      "LogBook.Metric.Homeless",     d => d.BedData.Homeless,     "Quarters");
+        yield return FromData("pop.beds.occupied", "LogBook.Metric.OccupiedBeds", d => d.BedData.OccupiedBeds, "Quarters");
+        yield return FromData("pop.beds.free",     "LogBook.Metric.FreeBeds",     d => d.BedData.FreeBeds,     "Quarters");
 
         // Employment — its own top-level category; sub-grouped by workforce
         // (all beaver metrics together, then all bot metrics).
         yield return InCategory(MetricCategory.Employment,
-            "emp.jobs.beavers", "Graphs.Metric.BeaverJobs",
+            "emp.jobs.beavers", "LogBook.Metric.BeaverJobs",
             d => d.BeaverWorkplaceData.OccupiedWorkslots, "Beavers");
         yield return InCategory(MetricCategory.Employment,
-            "emp.unemployed.beavers", "Graphs.Metric.UnemployedBeavers",
+            "emp.unemployed.beavers", "LogBook.Metric.UnemployedBeavers",
             d => d.BeaverWorkplaceData.Unemployed, "Beavers");
         yield return InCategory(MetricCategory.Employment,
-            "emp.vacancies.beavers", "Graphs.Metric.BeaverVacancies",
+            "emp.vacancies.beavers", "LogBook.Metric.BeaverVacancies",
             d => d.BeaverWorkplaceData.FreeWorkslots, "Beavers");
         yield return InCategory(MetricCategory.Employment,
-            "emp.jobs.bots", "Graphs.Metric.BotJobs",
+            "emp.jobs.bots", "LogBook.Metric.BotJobs",
             d => d.BotWorkplaceData.OccupiedWorkslots, "Bots");
         yield return InCategory(MetricCategory.Employment,
-            "emp.unemployed.bots", "Graphs.Metric.UnemployedBots",
+            "emp.unemployed.bots", "LogBook.Metric.UnemployedBots",
             d => d.BotWorkplaceData.Unemployed, "Bots");
         yield return InCategory(MetricCategory.Employment,
-            "emp.vacancies.bots", "Graphs.Metric.BotVacancies",
+            "emp.vacancies.bots", "LogBook.Metric.BotVacancies",
             d => d.BotWorkplaceData.FreeWorkslots, "Bots");
 
         // Health
-        yield return FromData("pop.contaminated", "Graphs.Metric.Contaminated",
+        yield return FromData("pop.contaminated", "LogBook.Metric.Contaminated",
             d => d.ContaminationData.ContaminatedTotal, "Health");
 
         yield return new MetricDefinition(
             id: "pop.infected",
-            nameLocKey: "Graphs.Metric.Infected",
+            nameLocKey: "LogBook.Metric.Infected",
             category: MetricCategory.Population,
             scope: MetricScope.District,
             valueFn: CountInfected);

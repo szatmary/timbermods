@@ -4,7 +4,7 @@ using Timberborn.EntitySystem;
 using Timberborn.GameDistricts;
 using Timberborn.SingletonSystem;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Shared mutable state: the district selected in the legend. `null` means
 /// "all districts" (settlement-wide aggregation). Holds a `DistrictCenter`

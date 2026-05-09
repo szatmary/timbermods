@@ -69,11 +69,11 @@
 
   <Target Name="DeployMod" AfterTargets="Build">
     <PropertyGroup>
-      <DeployDir>$(HOME)/Documents/Timberborn/Mods/Graphs</DeployDir>
+      <DeployDir>$(HOME)/Documents/Timberborn/Mods/LogBook</DeployDir>
     </PropertyGroup>
 
     <Copy SourceFiles="$(OutputPath)/manifest.json" DestinationFolder="$(DeployDir)" />
-    <Copy SourceFiles="$(OutputPath)/Graphs.dll" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(OutputPath)/LogBook.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="$(HarmonyDir)/0Harmony.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="lib/AppleSiliconHarmony.dll" DestinationFolder="$(DeployDir)" />
     <Copy SourceFiles="lib/libapple_silicon_harmony_native.dylib" DestinationFolder="$(DeployDir)" />

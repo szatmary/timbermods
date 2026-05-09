@@ -2,22 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Graphs.Metrics;
+using LogBook.Metrics;
 using Timberborn.CoreUI;
 using Timberborn.Goods;
 using Timberborn.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Scrollable legend of checkbox rows, grouped by metric category.
 /// Goods are further sub-grouped by the game's own good-group ids
 /// (e.g. Food, Ingredients, Logs, Metal, etc.) so related goods cluster.
 /// Each goods row shows the game's icon + localized name.
-public sealed class GraphsLegend
+public sealed class LogBookLegend
 {
-    private const string PrefsKey = "Graphs.VisibleMetricIds";
+    private const string PrefsKey = "LogBook.VisibleMetricIds";
 
     private static readonly HashSet<string> DefaultVisible = new()
     {
@@ -35,7 +35,7 @@ public sealed class GraphsLegend
 
     private bool _defaultsApplied;
 
-    public GraphsLegend(MetricRegistry registry, IGoodService goodService, ILoc loc, GameIcons icons)
+    public LogBookLegend(MetricRegistry registry, IGoodService goodService, ILoc loc, GameIcons icons)
     {
         _registry = registry;
         _goodService = goodService;
@@ -262,7 +262,7 @@ public sealed class GraphsLegend
         // otherwise); we then clear the inline label since the metric
         // name lives in a sibling Label.
         var toggle = new LocalizableToggle { value = VisibleMetricIds.Contains(def.Id) };
-        toggle._textLocKey = "Graphs.Empty";
+        toggle._textLocKey = "LogBook.Empty";
         toggle.AddToClassList("game-toggle");
         toggle.style.marginRight = 4;
         toggle.RegisterValueChangedCallback(evt =>
@@ -302,7 +302,7 @@ public sealed class GraphsLegend
     /// Goods: return the localized DisplayName and grab the icon.
     /// Other metrics: translate NameLocKey via the loc service. If the loc
     /// service returns the key unchanged (no translation), strip the dotted
-    /// prefix so rows read "Total" instead of "Graphs.Metric.Total".
+    /// prefix so rows read "Total" instead of "LogBook.Metric.Total".
     /// Shared with the chart tooltip.
     public string ResolveDisplayName(MetricDefinition def)
     {
@@ -347,7 +347,7 @@ public sealed class GraphsLegend
         var t = _loc.T(def.NameLocKey);
         if (!string.IsNullOrEmpty(t) && t != def.NameLocKey) return TitleCase(t);
 
-        // Strip everything before the last '.' so "Graphs.Metric.Total" → "Total".
+        // Strip everything before the last '.' so "LogBook.Metric.Total" → "Total".
         int lastDot = fallback.LastIndexOf('.');
         var raw = lastDot >= 0 && lastDot < fallback.Length - 1
             ? fallback.Substring(lastDot + 1)

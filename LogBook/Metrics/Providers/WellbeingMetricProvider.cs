@@ -6,7 +6,7 @@ using Timberborn.GameFactionSystem;
 using Timberborn.NeedSystem;
 using Timberborn.Wellbeing;
 
-namespace Graphs.Metrics.Providers;
+namespace LogBook.Metrics.Providers;
 
 /// Registers wellbeing metrics (average, minimum) and need-satisfaction metrics
 /// (hunger/food, thirst/water) aggregated across beavers in the filter scope.
@@ -31,7 +31,7 @@ public sealed class WellbeingMetricProvider : IMetricProvider
     {
         yield return new MetricDefinition(
             id: "wellbeing.avg",
-            nameLocKey: "Graphs.Metric.Wellbeing",
+            nameLocKey: "LogBook.Metric.Wellbeing",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
             valueFn: districtName => WalkWellbeing(districtName).Average,
@@ -49,7 +49,7 @@ public sealed class WellbeingMetricProvider : IMetricProvider
         // to fill the chart.
         yield return new MetricDefinition(
             id: "need.hunger.avg",
-            nameLocKey: "Graphs.Metric.Hunger",
+            nameLocKey: "LogBook.Metric.Hunger",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
             valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveFoodNeedId())),
@@ -57,7 +57,7 @@ public sealed class WellbeingMetricProvider : IMetricProvider
 
         yield return new MetricDefinition(
             id: "need.thirst.avg",
-            nameLocKey: "Graphs.Metric.Thirst",
+            nameLocKey: "LogBook.Metric.Thirst",
             category: MetricCategory.Wellbeing,
             scope: MetricScope.District,
             valueFn: districtName => Invert(AverageSatisfaction(districtName, ResolveWaterNeedId())),

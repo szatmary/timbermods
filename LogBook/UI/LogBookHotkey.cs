@@ -2,20 +2,20 @@ using Timberborn.InputSystem;
 using Timberborn.TickSystem;
 using UnityEngine.InputSystem;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Polls for Shift+G each tick and toggles the graphs window.
 /// Uses Unity's new Input System — Timberborn disables the legacy Input
 /// class in player settings, so `UnityEngine.Input.GetKey` throws at runtime.
 /// Esc handling lives on the panel: once pushed, PanelStack routes Esc to
 /// our IPanelController.OnUICancelled().
-public sealed class GraphsHotkey : ITickableSingleton
+public sealed class LogBookHotkey : ITickableSingleton
 {
     private readonly InputService _input;
-    private readonly GraphsWindow _window;
+    private readonly LogBookWindow _window;
     private bool _prevPressed;
 
-    public GraphsHotkey(InputService input, GraphsWindow window)
+    public LogBookHotkey(InputService input, LogBookWindow window)
     {
         _input = input;
         _window = window;

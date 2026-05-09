@@ -1,4 +1,4 @@
-# Graphs mod — internal API notes
+# LogBook mod — internal API notes
 
 Source of truth for implementers. Names verified against the Timberborn
 game DLLs in the Steam install's `Timberborn.app/.../Managed/` directory.

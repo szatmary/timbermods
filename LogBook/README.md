@@ -1,4 +1,4 @@
-# Graphs
+# LogBook
 
 A Timberborn mod that adds a window of line graphs over your settlement's
 history — goods, population, science, wellbeing, employment — on a shared
@@ -82,11 +82,11 @@ beavers, Science stored, Average wellbeing.
 From the repo root:
 
 ```bash
-./build.sh Graphs
+./build.sh LogBook
 ```
 
 The build script sets `DOTNET_ROOT` and deploys the mod to
-`~/Documents/Timberborn/Mods/Graphs/` using the flat mod layout.
+`~/Documents/Timberborn/Mods/LogBook/` using the flat mod layout.
 
 ## Requirements
 

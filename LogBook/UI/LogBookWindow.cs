@@ -1,20 +1,20 @@
-using Graphs.Metrics;
+using LogBook.Metrics;
 using Timberborn.CoreUI;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Implements `IPanelController` so the game's `PanelStack` provides our
 /// window shell — backdrop, USS theme, Esc/Enter routing, focus management.
-public sealed class GraphsWindow : IPanelController
+public sealed class LogBookWindow : IPanelController
 {
     private readonly PanelStack _panelStack;
     private readonly VisualElementInitializer _elementInitializer;
-    private readonly GraphsRangeSelector _rangeSelector;
-    private readonly GraphsDistrictSelector _districtSelector;
-    private readonly GraphsLegend _legend;
-    private readonly GraphsChart _chart;
+    private readonly LogBookRangeSelector _rangeSelector;
+    private readonly LogBookDistrictSelector _districtSelector;
+    private readonly LogBookLegend _legend;
+    private readonly LogBookChart _chart;
     private readonly MetricSampler _sampler;
     private readonly DistrictFilter _filter;
 
@@ -23,13 +23,13 @@ public sealed class GraphsWindow : IPanelController
 
     public bool IsOpen => _isShown;
 
-    public GraphsWindow(
+    public LogBookWindow(
         PanelStack panelStack,
         VisualElementInitializer elementInitializer,
-        GraphsRangeSelector rangeSelector,
-        GraphsDistrictSelector districtSelector,
-        GraphsLegend legend,
-        GraphsChart chart,
+        LogBookRangeSelector rangeSelector,
+        LogBookDistrictSelector districtSelector,
+        LogBookLegend legend,
+        LogBookChart chart,
         MetricSampler sampler,
         DistrictFilter filter)
     {

@@ -1,19 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Graphs.Metrics;
+using LogBook.Metrics;
 using Timberborn.DropdownSystem;
 using Timberborn.GameDistricts;
 using Timberborn.SingletonSystem;
 using UnityEngine.UIElements;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// District dropdown using the game's native `Dropdown` widget. The
 /// game's DropdownInitializer wires it up when VisualElementInitializer
 /// walks our tree; we then populate items via DropdownItemsSetter against
 /// a live provider so renames / adds / removes show up.
-public sealed class GraphsDistrictSelector : ILoadableSingleton
+public sealed class LogBookDistrictSelector : ILoadableSingleton
 {
     public const string AllDistrictsLabel = "All districts";
 
@@ -25,7 +25,7 @@ public sealed class GraphsDistrictSelector : ILoadableSingleton
     private Dropdown? _dropdown;
     private DistrictDropdownProvider? _provider;
 
-    public GraphsDistrictSelector(
+    public LogBookDistrictSelector(
         DistrictCenterRegistry registry,
         DistrictFilter filter,
         DropdownItemsSetter itemsSetter,
@@ -87,7 +87,7 @@ internal sealed class DistrictDropdownProvider : IDropdownProvider
     {
         get
         {
-            var list = new List<string> { GraphsDistrictSelector.AllDistrictsLabel };
+            var list = new List<string> { LogBookDistrictSelector.AllDistrictsLabel };
             list.AddRange(_registry.FinishedDistrictCenters
                 .Select(d => d.DistrictName)
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
@@ -95,10 +95,10 @@ internal sealed class DistrictDropdownProvider : IDropdownProvider
         }
     }
 
-    public string GetValue() => _filter.DistrictName ?? GraphsDistrictSelector.AllDistrictsLabel;
+    public string GetValue() => _filter.DistrictName ?? LogBookDistrictSelector.AllDistrictsLabel;
 
     public void SetValue(string value)
     {
-        _filter.Set(value == GraphsDistrictSelector.AllDistrictsLabel ? null : value);
+        _filter.Set(value == LogBookDistrictSelector.AllDistrictsLabel ? null : value);
     }
 }

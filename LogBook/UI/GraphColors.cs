@@ -1,7 +1,7 @@
-using Graphs.Metrics;
+using LogBook.Metrics;
 using UnityEngine;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Deterministic palette inspired by Timberborn's own UI: warm woody browns,
 /// muted forest greens, pond blues, and soft reds. Line color is stable per

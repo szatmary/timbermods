@@ -1,12 +1,12 @@
 using Bindito.Core;
-using Graphs.Metrics;
-using Graphs.Metrics.Providers;
-using Graphs.UI;
+using LogBook.Metrics;
+using LogBook.Metrics.Providers;
+using LogBook.UI;
 
-namespace Graphs;
+namespace LogBook;
 
 [Context("Game")]
-public class GraphsConfigurator : Configurator
+public class LogBookConfigurator : Configurator
 {
     protected override void Configure()
     {
@@ -26,12 +26,12 @@ public class GraphsConfigurator : Configurator
 
         // UI
         Bind<GameIcons>().AsSingleton();
-        Bind<GraphsRangeSelector>().AsSingleton();
-        Bind<GraphsDistrictSelector>().AsSingleton();
-        Bind<GraphsLegend>().AsSingleton();
-        Bind<GraphsChart>().AsSingleton();
-        Bind<GraphsWindow>().AsSingleton();
-        Bind<GraphsHotkey>().AsSingleton();
-        Bind<GraphsTopBarButton>().AsSingleton();
+        Bind<LogBookRangeSelector>().AsSingleton();
+        Bind<LogBookDistrictSelector>().AsSingleton();
+        Bind<LogBookLegend>().AsSingleton();
+        Bind<LogBookChart>().AsSingleton();
+        Bind<LogBookWindow>().AsSingleton();
+        Bind<LogBookHotkey>().AsSingleton();
+        Bind<LogBookTopBarButton>().AsSingleton();
     }
 }

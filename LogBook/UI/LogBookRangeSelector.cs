@@ -2,11 +2,11 @@ using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 public enum GraphRange { TenDays, HundredDays, ThousandDays, TenThousandDays }
 
-public sealed class GraphsRangeSelector
+public sealed class LogBookRangeSelector
 {
     public GraphRange CurrentRange { get; private set; } = GraphRange.TenDays;
     public event Action? Changed;

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Timberborn.AssetSystem;
 using UnityEngine;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Resolves the game's native UI sprites for our metric ids via
 /// `IAssetLoader.Load<Sprite>`. Cached per id.

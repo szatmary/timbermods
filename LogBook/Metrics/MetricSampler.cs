@@ -9,7 +9,7 @@ using Timberborn.TimeSystem;
 using Timberborn.WorldPersistence;
 using UnityEngine;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Samples every registered metric 24 times per in-game day (one per hour).
 /// Storage is per-district: each finished DistrictCenter (keyed by stable
@@ -24,7 +24,7 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
     /// "no filter / all districts" history.
     public const string GlobalKey = "_global";
 
-    private static readonly SingletonKey SavedKey = new("GraphsMetricHistoryV3");
+    private static readonly SingletonKey SavedKey = new("LogBookMetricHistoryV3");
     private static readonly ListKey<string> SavedDistrictKeys = new("DistrictKeys");
     private static readonly ListKey<string> SavedMetricIds = new("MetricIds");
 
@@ -149,7 +149,7 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
                 _scratch![i] = float.NaN;
                 if (_loggedFailures.Add(def.Id))
                     Debug.LogWarning(
-                        $"[Graphs] Metric '{def.Id}' threw on first sample (district={district ?? "<all>"}): {ex.Message}");
+                        $"[LogBook] Metric '{def.Id}' threw on first sample (district={district ?? "<all>"}): {ex.Message}");
             }
         }
         h.Append(_scratch, weather, partialDay);
@@ -233,7 +233,7 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
         }
 
         Debug.Log(
-            $"[Graphs] restore: {savedDistrictKeys.Count} district histories, " +
+            $"[LogBook] restore: {savedDistrictKeys.Count} district histories, " +
             $"{totalRestored} samples; latest timestamp {latestTimestamp:0.00}");
 
         if (latestTimestamp > float.NegativeInfinity)
@@ -256,7 +256,7 @@ public sealed class MetricSampler : ILoadableSingleton, ITickableSingleton, ISav
             weather.Count != sampleCount)
         {
             throw new InvalidOperationException(
-                $"[Graphs] tier shape mismatch under prefix '{prefix}': " +
+                $"[LogBook] tier shape mismatch under prefix '{prefix}': " +
                 $"sampleCount={sampleCount}, values={values.Count}, " +
                 $"timestamps={timestamps.Count}, weather={weather.Count}");
         }

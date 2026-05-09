@@ -1,6 +1,6 @@
 using System;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Three-tier history: Recent (24/day, last 100d), Mid (4/day, last 1000d),
 /// Old (1/day, last 10000d). Each Append goes to Recent at full resolution

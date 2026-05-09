@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Procedural 📈-style icon for the top-right toolbar button: axes plus
 /// a polyline trending up-right. Painted in pure white so the caller can

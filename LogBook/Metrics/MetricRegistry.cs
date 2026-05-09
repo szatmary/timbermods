@@ -3,7 +3,7 @@ using System.Linq;
 using Timberborn.SingletonSystem;
 using UnityEngine;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Flattens all registered IMetricProviders into a single ordered metric list
 /// available to both the sampler and the UI. Order is:
@@ -37,7 +37,7 @@ public sealed class MetricRegistry : ILoadableSingleton
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[Graphs] Provider {provider.GetType().Name} failed: {ex.Message}");
+                Debug.LogWarning($"[LogBook] Provider {provider.GetType().Name} failed: {ex.Message}");
                 continue;
             }
 
@@ -57,14 +57,14 @@ public sealed class MetricRegistry : ILoadableSingleton
             {
                 if (_idToIndex.ContainsKey(def.Id))
                 {
-                    Debug.LogWarning($"[Graphs] Duplicate metric id ignored: {def.Id}");
+                    Debug.LogWarning($"[LogBook] Duplicate metric id ignored: {def.Id}");
                     continue;
                 }
                 _idToIndex[def.Id] = _metrics.Count;
                 _metrics.Add(def);
             }
 
-        Debug.Log($"[Graphs] MetricRegistry loaded {_metrics.Count} metrics.");
+        Debug.Log($"[LogBook] MetricRegistry loaded {_metrics.Count} metrics.");
     }
 
     public int IndexOf(string id) =>

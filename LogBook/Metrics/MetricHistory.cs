@@ -1,6 +1,6 @@
 using System;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Fixed-capacity ring buffer of metric samples.
 /// Layout: values is a [capacity][metricCount] 2D layout stored in a single

@@ -3,7 +3,7 @@ using Timberborn.GameCycleSystem;
 using Timberborn.HazardousWeatherSystem;
 using Timberborn.WeatherSystem;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Returns the current weather state for each sample. The hazardous-cycle
 /// service tells us *which* hazard is scheduled this cycle; comparing

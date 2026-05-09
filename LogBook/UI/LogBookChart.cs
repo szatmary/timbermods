@@ -1,10 +1,10 @@
-using Graphs.Metrics;
+using LogBook.Metrics;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
-public sealed class GraphsChart
+public sealed class LogBookChart
 {
     // Weather-band tints, semi-transparent so the wooden panel grain reads
     // through. Hues match the in-game `weather-progress-{dry,badtide}` pills.
@@ -16,9 +16,9 @@ public sealed class GraphsChart
     private static Color WithAlpha(Color c, float a) => new(c.r, c.g, c.b, a);
 
     private readonly MetricSampler _sampler;
-    private readonly GraphsRangeSelector _range;
+    private readonly LogBookRangeSelector _range;
     private readonly MetricRegistry _registry;
-    private readonly GraphsLegend _legend;
+    private readonly LogBookLegend _legend;
     private readonly GameIcons _icons;
 
     private VisualElement? _element;
@@ -49,11 +49,11 @@ public sealed class GraphsChart
     private readonly System.Collections.Generic.List<Image> _endIconPool = new();
     private readonly System.Collections.Generic.List<Label> _endLabelPool = new();
 
-    public GraphsChart(
+    public LogBookChart(
         MetricSampler sampler,
-        GraphsRangeSelector range,
+        LogBookRangeSelector range,
         MetricRegistry registry,
-        GraphsLegend legend,
+        LogBookLegend legend,
         GameIcons icons)
     {
         _sampler = sampler;

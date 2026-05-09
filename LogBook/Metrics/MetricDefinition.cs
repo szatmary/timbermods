@@ -1,4 +1,4 @@
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// A single trackable metric. The value function is called once per sample
 /// (per in-game hour) with the active district-filter value.

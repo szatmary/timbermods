@@ -1,7 +1,7 @@
 {
-    "Name": "Graphs",
+    "Name": "LogBook",
     "Version": "1.0.0",
-    "Id": "Graphs",
+    "Id": "LogBook",
     "MinimumGameVersion": "1.0.0.0",
     "Description": "Adds a chart-icon button to the top-right toolbar (or press Shift+G) to open a window of line graphs for goods, population, science, employment, and wellbeing — sampled hourly, persisted across save/reload, with weather bands behind the lines."
 }

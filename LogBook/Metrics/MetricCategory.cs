@@ -1,4 +1,4 @@
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Grouping used by the legend's category sections.
 public enum MetricCategory

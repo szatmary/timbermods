@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using HarmonyLib;
 using Timberborn.ModManagerScene;
 
-namespace Graphs;
+namespace LogBook;
 
 public class ModStarter : IModStarter
 {
@@ -12,6 +12,6 @@ public class ModStarter : IModStarter
             && RuntimeInformation.OSArchitecture == Architecture.Arm64)
             Anatawa12.AppleSiliconHarmony.Patcher.Patch();
 
-        new Harmony("Graphs").PatchAll();
+        new Harmony("LogBook").PatchAll();
     }
 }

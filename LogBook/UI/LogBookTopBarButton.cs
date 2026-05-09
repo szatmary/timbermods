@@ -5,17 +5,17 @@ using Timberborn.UILayoutSystem;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Graphs.UI;
+namespace LogBook.UI;
 
 /// Square-toggle in the top-right strip alongside vanilla's
 /// construction-guidelines / stockpile-overlay / natural-resources buttons.
 /// Reuses the vanilla `Common/SquareToggle` template for sizing, frame
 /// sprites, and hover behavior; the chart icon is painted on the toggle's
 /// checkmark element. Tooltip routes through the game's tooltip service.
-public sealed class GraphsTopBarButton : ILoadableSingleton
+public sealed class LogBookTopBarButton : ILoadableSingleton
 {
     private readonly UILayout _uiLayout;
-    private readonly GraphsWindow _window;
+    private readonly LogBookWindow _window;
     private readonly VisualElementLoader _loader;
     private readonly ITooltipRegistrar _tooltipRegistrar;
 
@@ -26,9 +26,9 @@ public sealed class GraphsTopBarButton : ILoadableSingleton
     // they're attached to the checkmark.
     private Sprite? _iconSprite;
 
-    public GraphsTopBarButton(
+    public LogBookTopBarButton(
         UILayout uiLayout,
-        GraphsWindow window,
+        LogBookWindow window,
         VisualElementLoader loader,
         ITooltipRegistrar tooltipRegistrar)
     {
@@ -53,7 +53,7 @@ public sealed class GraphsTopBarButton : ILoadableSingleton
             checkmark.style.unityBackgroundImageTintColor = new StyleColor(IconTint);
         }
 
-        _tooltipRegistrar.Register(root, "Graphs (Shift+G)");
+        _tooltipRegistrar.Register(root, "LogBook (Shift+G)");
 
         // The toggle's checked state is incidental — the window owns its
         // own open/closed flag.

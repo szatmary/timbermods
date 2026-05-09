@@ -5,7 +5,7 @@ using Timberborn.GameDistricts;
 using Timberborn.Goods;
 using Timberborn.ResourceCountingSystem;
 
-namespace Graphs.Metrics.Providers;
+namespace LogBook.Metrics.Providers;
 
 /// Registers one metric per good id. Uses the game's own
 /// `ResourceCountingService` which aggregates stock across every source

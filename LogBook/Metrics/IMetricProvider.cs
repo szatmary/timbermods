@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Implemented by each category-specific provider. Providers are collected
 /// by the registry at Load(). Providers whose backing game services aren't

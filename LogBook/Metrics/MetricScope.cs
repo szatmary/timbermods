@@ -1,4 +1,4 @@
-namespace Graphs.Metrics;
+namespace LogBook.Metrics;
 
 /// Scope a metric's value function operates at.
 public enum MetricScope
