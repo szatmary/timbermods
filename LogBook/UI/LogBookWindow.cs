@@ -23,6 +23,10 @@ public sealed class LogBookWindow : IPanelController
 
     public bool IsOpen => _isShown;
 
+    /// Fires after Open or Close transitions so external observers
+    /// (top-bar toggle, future status indicators) can sync their state.
+    public event System.Action? IsOpenChanged;
+
     public LogBookWindow(
         PanelStack panelStack,
         VisualElementInitializer elementInitializer,
@@ -58,6 +62,7 @@ public sealed class LogBookWindow : IPanelController
         _isShown = true;
 
         _filter.Changed += _chart.Repaint;
+        IsOpenChanged?.Invoke();
     }
 
     public void Close()
@@ -68,6 +73,7 @@ public sealed class LogBookWindow : IPanelController
         _panelStack.Pop(this);
         _isShown = false;
         _root = null;
+        IsOpenChanged?.Invoke();
     }
 
     // IPanelController: the panel stack calls this to get our visual tree.

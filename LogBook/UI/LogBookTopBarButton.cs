@@ -55,9 +55,13 @@ public sealed class LogBookTopBarButton : ILoadableSingleton
 
         _tooltipRegistrar.Register(root, "LogBook (Shift+G)");
 
-        // The toggle's checked state is incidental — the window owns its
-        // own open/closed flag.
+        // The window owns the source of truth for open/closed. Click flips
+        // it via Toggle(); IsOpenChanged feeds back so the toggle's visual
+        // state stays in sync when the window closes via Esc / X / hotkey.
+        // SetValueWithoutNotify avoids re-entering ValueChangedCallback.
         toggle.RegisterValueChangedCallback(_ => _window.Toggle());
+        _window.IsOpenChanged += () => toggle.SetValueWithoutNotify(_window.IsOpen);
+        toggle.SetValueWithoutNotify(_window.IsOpen);
 
         _uiLayout.AddTopRightButton(root, 2);
     }

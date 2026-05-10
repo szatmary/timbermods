@@ -337,7 +337,11 @@ public sealed class LogBookLegend
             if (spec != null)
             {
                 icon = spec.Icon.Asset;
-                var display = spec.DisplayName.Value;
+                // Plural matches the rest of the game's stockpile chrome
+                // ("Logs" / "Planks"). Fall back to singular if a mod
+                // ships a spec without one set.
+                var display = spec.PluralDisplayName.Value;
+                if (string.IsNullOrEmpty(display)) display = spec.DisplayName.Value;
                 if (!string.IsNullOrEmpty(display)) return TitleCase(display);
             }
             return TitleCase(goodId);

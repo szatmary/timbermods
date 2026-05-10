@@ -69,6 +69,12 @@ public sealed class LogBookChart
         _element.style.flexGrow = 1;
         _element.generateVisualContent += Draw;
 
+        // Pool entries from a previous Build are still parented to that
+        // (now-orphaned) element. Drop them so UpdateEndIcons reallocates
+        // into the freshly-built _element on this Open.
+        _endIconPool.Clear();
+        _endLabelPool.Clear();
+
         // Subscribe once per chart lifetime — Build may be called on each
         // window Open, and subscribing there would leak the prior element
         // through the singleton's delegate list.
