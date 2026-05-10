@@ -42,7 +42,9 @@ Close with Esc or the X button.
   a cycle, not the temperate lead-in.
 - **Hover tooltip** — a vertical cursor line plus a panel listing every
   visible metric's value at the cursor's nearest sample.
-- **Range selector** in the title bar: 10, 100, 1000, or 10 000 days.
+- **Range selector** in the title bar: Week (7 d), Month (28 d), Year
+  (13 four-week months = 364 d), or All Time. No leap day — it's a
+  video game.
 - **District filter** dropdown above the legend. "All districts"
   aggregates settlement-wide; picking one narrows every per-district
   metric.
@@ -53,11 +55,11 @@ Samples are taken 24 times per in-game day (one per in-game hour). Each
 finished district plus a settlement-wide "global" entry has its own
 three-tier history:
 
-| Tier   | Resolution | Capacity                |
-|--------|------------|-------------------------|
-| Recent | 24 / day   | 100 days  (2 400 samples) |
-| Mid    | 4 / day    | 1 000 days (4 000 samples) |
-| Old    | 1 / day    | 10 000 days (10 000 samples) |
+| Tier   | Resolution | Capacity                          |
+|--------|------------|-----------------------------------|
+| Recent | 24 / day   | 28 days   (672 samples — Month)   |
+| Mid    | 4 / day    | 364 days  (1 456 samples — Year)  |
+| Old    | 1 / day    | 10 000 days (10 000 samples — All)|
 
 Coarser tiers store running averages so an Old-tier sample summarizes a
 full day of activity. The chart picks the finest tier that still covers

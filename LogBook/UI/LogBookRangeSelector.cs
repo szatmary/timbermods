@@ -4,11 +4,11 @@ using UnityEngine.UIElements;
 
 namespace LogBook.UI;
 
-public enum GraphRange { TenDays, HundredDays, ThousandDays, TenThousandDays }
+public enum GraphRange { Week, Month, Year, AllTime }
 
 public sealed class LogBookRangeSelector
 {
-    public GraphRange CurrentRange { get; private set; } = GraphRange.TenDays;
+    public GraphRange CurrentRange { get; private set; } = GraphRange.Week;
     public event Action? Changed;
 
     private static readonly Color SelectedBg = new(0.38f, 0.30f, 0.20f);
@@ -33,10 +33,10 @@ public sealed class LogBookRangeSelector
             return btn;
         }
 
-        row.Add(Make("10 days",    GraphRange.TenDays));
-        row.Add(Make("100 days",   GraphRange.HundredDays));
-        row.Add(Make("1000 days",  GraphRange.ThousandDays));
-        row.Add(Make("10000 days", GraphRange.TenThousandDays));
+        row.Add(Make("Week",     GraphRange.Week));
+        row.Add(Make("Month",    GraphRange.Month));
+        row.Add(Make("Year",     GraphRange.Year));
+        row.Add(Make("All Time", GraphRange.AllTime));
 
         return row;
 
@@ -77,12 +77,14 @@ public sealed class LogBookRangeSelector
         btn.style.fontSize = 12;
     }
 
+    /// In-game day spans. Year is 13 four-week months (no leap day —
+    /// it's a video game). All Time uses Old tier's full 10 000-day cap.
     public float LookbackDays() => CurrentRange switch
     {
-        GraphRange.TenDays         => 10f,
-        GraphRange.HundredDays     => 100f,
-        GraphRange.ThousandDays    => 1000f,
-        GraphRange.TenThousandDays => 10000f,
-        _                          => 10f,
+        GraphRange.Week    => 7f,
+        GraphRange.Month   => 28f,
+        GraphRange.Year    => 364f,
+        GraphRange.AllTime => 10000f,
+        _                  => 7f,
     };
 }

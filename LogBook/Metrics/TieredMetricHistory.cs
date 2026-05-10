@@ -2,20 +2,21 @@ using System;
 
 namespace LogBook.Metrics;
 
-/// Three-tier history: Recent (24/day, last 100d), Mid (4/day, last 1000d),
-/// Old (1/day, last 10000d). Each Append goes to Recent at full resolution
-/// and is accumulated into Mid/Old running averages; once N raw samples have
-/// accumulated for a tier, the average is flushed to that tier's ring buffer
-/// with a timestamp at the bucket's midpoint.
+/// Three-tier history aligned to the range-selector buttons:
+/// Recent (24/day, last 28d / Month), Mid (4/day, last 364d / Year),
+/// Old (1/day, last 10 000d / All Time). Each Append goes to Recent at
+/// full resolution and accumulates into Mid/Old running averages; once
+/// N raw samples have buffered for a tier, the average flushes to that
+/// tier's ring with a midpoint timestamp.
 ///
 /// Charts pick a tier via HistoryFor(lookbackDays). The chosen tier must
 /// actually reach further back than the next-finer tier; otherwise we use
 /// the finer tier (which has at least as much coverage at higher resolution).
 public sealed class TieredMetricHistory
 {
-    public const int RecentCapacity = 2_400;   // 100 days @ 24/day
-    public const int MidCapacity    = 4_000;   // 1000 days @ 4/day
-    public const int OldCapacity    = 10_000;  // 10000 days @ 1/day
+    public const int RecentCapacity = 672;     // 28 days @ 24/day  (Month)
+    public const int MidCapacity    = 1_456;   // 364 days @ 4/day  (Year)
+    public const int OldCapacity    = 10_000;  // 10 000 days @ 1/day  (All Time)
 
     public const int MidDecimation = 6;        // 6 raw samples → 1 mid sample
     public const int OldDecimation = 24;       // 24 raw samples → 1 old sample
@@ -105,15 +106,16 @@ public sealed class TieredMetricHistory
     /// Pick the tier whose resolution best fits the requested lookback.
     /// A coarser tier wins only when it actually reaches further back than
     /// the next-finer tier — otherwise the finer tier has at least as much
-    /// coverage at higher resolution and should be used.
+    /// coverage at higher resolution and should be used. Cutoffs match
+    /// each tier's day span (28 / 364).
     public MetricHistory HistoryFor(float lookbackDays)
     {
-        if (lookbackDays <= 100f) return _recent;
+        if (lookbackDays <= 28f) return _recent;
 
-        if (lookbackDays <= 1000f)
+        if (lookbackDays <= 364f)
             return OldestTimestamp(_mid) < OldestTimestamp(_recent) ? _mid : _recent;
 
-        // lookbackDays > 1000
+        // lookbackDays > 364 — All Time.
         var midOrRecent = OldestTimestamp(_mid) < OldestTimestamp(_recent) ? _mid : _recent;
         return OldestTimestamp(_old) < OldestTimestamp(midOrRecent) ? _old : midOrRecent;
     }
